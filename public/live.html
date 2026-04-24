@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Claude Colony — Live</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#0a0400" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Colony" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -354,6 +359,21 @@
   .event-row .ts { color: #8a7a60; font-family: 'Silkscreen', monospace; font-size: 9px; margin-right: 6px; }
   .event-row .tag { color: #6ae0ff; font-family: 'Silkscreen', monospace; font-size: 9px; margin-right: 6px; }
 
+  .reveal-btn {
+    padding: 7px 12px;
+    background: #0a0400;
+    border: 1px solid #5a3a20;
+    color: #f2d9a8;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    border-radius: 3px;
+    flex: 1 0 auto;
+  }
+  .reveal-btn:hover { border-color: #ffb870; color: #ffb870; background: #1a0a05; }
+  .reveal-btn:active { transform: scale(0.97); }
+
   /* =================== SPAWN MODAL =================== */
   .modal-bg {
     position: fixed; inset: 0;
@@ -631,6 +651,12 @@
         <div class="s"><span class="k">EVENTS</span><span class="v" id="d_events">0</span></div>
         <div class="s"><span class="k">MODEL</span><span class="v" id="d_model" style="font-size:11px">—</span></div>
         <div class="s"><span class="k">STATUS</span><span class="v" id="d_status2" style="font-size:11px">—</span></div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px">
+        <button class="reveal-btn" onclick="revealActive('finder')">📂 FINDER</button>
+        <button class="reveal-btn" onclick="revealActive('vscode')">⌨ VSCODE</button>
+        <button class="reveal-btn" onclick="revealActive('iterm')">💻 ITERM</button>
+        <button class="reveal-btn" onclick="revealActive('terminal')">▢ TERMINAL</button>
       </div>
       <div id="d_events_list"></div>
     </div>
@@ -1101,6 +1127,22 @@ function refreshDrawer(session) {
 }
 function closeDrawer() { drawer.classList.remove('open'); openSessionId = null; }
 window.closeDrawer = closeDrawer;
+
+async function revealActive(target) {
+  if (!openSessionId) return;
+  const a = ants.get(openSessionId);
+  if (!a) return;
+  const r = await fetch('/api/reveal', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path: a.session.projectPath, target }),
+  });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({ reason: 'failed' }));
+    alert('reveal failed: ' + (d.reason || 'unknown'));
+  }
+}
+window.revealActive = revealActive;
 
 function pushEventToDrawer(session, event) {
   if (openSessionId !== session.id) return;

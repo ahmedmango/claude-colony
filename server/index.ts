@@ -21,6 +21,7 @@ import { listSkills, getSkill } from './skills.ts';
 import { listProjects } from './projects.ts';
 import { ADAPTERS, describeAll, type Provider } from './llm/index.ts';
 import { notifyWaiting, clearNotificationDedupe } from './notify.ts';
+import { reveal, type RevealTarget } from './reveal.ts';
 
 const PORT = Number(process.env.COLONY_PORT ?? 3174);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,6 +63,13 @@ app.get('/api/projects', (c) =>
 app.get('/api/providers', async (c) =>
   c.json({ providers: await describeAll() }),
 );
+
+app.post('/api/reveal', async (c) => {
+  const body = await c.req.json().catch(() => null) as { path?: string; target?: string } | null;
+  if (!body || !body.path || !body.target) return c.json({ error: 'path + target required' }, 400);
+  const res = await reveal({ path: body.path, target: body.target as RevealTarget });
+  return c.json(res, res.ok ? 200 : 400);
+});
 
 app.post('/api/spawn', async (c) => {
   const body = await c.req.json().catch(() => null) as

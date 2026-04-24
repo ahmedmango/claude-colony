@@ -1,0 +1,14 @@
+{
+  "name": "Claude Colony",
+  "short_name": "Colony",
+  "description": "Watch your Claude Code sessions as a pixel-art ant farm.",
+  "start_url": "/live.html",
+  "display": "standalone",
+  "background_color": "#0d0805",
+  "theme_color": "#ffb870",
+  "orientation": "any",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "categories": ["productivity", "developer"]
+}
