@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Town — Vibe Sketches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=VT323&family=Share+Tech+Mono&family=Press+Start+2P&family=Silkscreen&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --ink: #e8e8ea;
+    --dim: #8a8a90;
+    --line: #222;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  body { padding: 32px; min-height: 100vh; }
+  header { margin-bottom: 32px; }
+  h1 { font-size: 18px; letter-spacing: 0.04em; }
+  h1 span { color: var(--dim); font-weight: 400; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #111;
+  }
+  .card-label {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .card-label b { color: var(--ink); font-weight: 600; }
+  .stage {
+    position: relative;
+    height: 360px;
+    overflow: hidden;
+  }
+
+  /* ===========================================================
+     1. SEVERANCE — Macro Data Refinement
+     =========================================================== */
+  .sev {
+    background: #f4f2ea;
+    color: #0f2a52;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .sev .sev-top {
+    padding: 10px 16px;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    border-bottom: 1px solid #0f2a52;
+    display: flex;
+    justify-content: space-between;
+  }
+  .sev .sev-title { text-align: center; padding: 18px 0 10px; font-size: 11px; letter-spacing: 0.45em; }
+  .sev .sev-hex {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    padding: 16px 32px;
+    height: 220px;
+    align-content: center;
+  }
+  .sev .sev-hex span {
+    font-size: 22px;
+    text-align: center;
+    animation: drift 6s ease-in-out infinite;
+    opacity: 0.85;
+  }
+  .sev .sev-hex span:nth-child(7n) { animation-delay: -1s; color: #d04; font-weight: 600; }
+  .sev .sev-hex span:nth-child(5n) { animation-delay: -3s; }
+  .sev .sev-hex span:nth-child(3n) { animation-delay: -2s; }
+  @keyframes drift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .sev .sev-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 40px;
+    background: #0f2a52;
+    color: #f4f2ea;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+  }
+  .sev .sev-prog { width: 140px; height: 4px; background: #2a4a7a; position: relative; }
+  .sev .sev-prog::after { content: ''; position: absolute; inset: 0; width: 38%; background: #f4f2ea; }
+
+  /* ===========================================================
+     2. CASSETTE FUTURISM — MU-TH-UR 6000
+     =========================================================== */
+  .muther {
+    background: #0a0805;
+    color: #ffb347;
+    font-family: 'VT323', monospace;
+    position: relative;
+  }
+  .muther::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(255,179,71,0.05) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+  }
+  .muther::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+  }
+  .muther .mu-head {
+    padding: 8px 14px;
+    border-bottom: 1px solid #ffb347;
+    font-size: 16px;
+    letter-spacing: 0.1em;
+    display: flex;
+    justify-content: space-between;
+  }
+  .muther .mu-head .blink { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .muther .mu-body {
+    padding: 14px 18px;
+    font-size: 18px;
+    line-height: 1.4;
+    position: relative;
+    z-index: 1;
+  }
+  .muther .mu-body div { white-space: nowrap; overflow: hidden; }
+  .muther .mu-alert {
+    margin-top: 14px;
+    border: 2px solid #ff4a1c;
+    color: #ff4a1c;
+    padding: 8px 10px;
+    font-size: 17px;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 74, 28, 0.6); }
+    50%      { box-shadow: 0 0 24px 2px rgba(255, 74, 28, 0.6); }
+  }
+  .muther .mu-keys {
+    position: absolute; bottom: 10px; left: 14px; right: 14px;
+    display: flex; gap: 8px;
+    font-size: 13px; z-index: 1;
+  }
+  .muther .mu-keys span {
+    border: 1px solid #ffb347; padding: 3px 8px; background: #1a1308;
+  }
+
+  /* ===========================================================
+     3. ANT COLONY — cross-section
+     =========================================================== */
+  .ant {
+    background: linear-gradient(#efd8a8 0 22%, #6b4423 22% 100%);
+    position: relative;
+    font-family: 'Silkscreen', monospace;
+    color: #3a2010;
+  }
+  .ant svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ant .tag {
+    position: absolute;
+    background: #fffbe6;
+    border: 1px solid #3a2010;
+    padding: 3px 6px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .ant .dot-ant {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: #1a0a05;
+    border-radius: 50%;
+    box-shadow: -6px 0 0 -2px #1a0a05, 6px 0 0 -2px #1a0a05;
+  }
+  .ant .ant1 { top: 145px; left: 90px; animation: crawl1 6s linear infinite; }
+  .ant .ant2 { top: 215px; left: 260px; animation: crawl2 8s linear infinite; }
+  .ant .ant3 { top: 290px; left: 140px; animation: crawl3 5s linear infinite; }
+  @keyframes crawl1 { 0%{transform:translateX(0)} 100%{transform:translateX(200px)} }
+  @keyframes crawl2 { 0%{transform:translateX(0)} 100%{transform:translateX(-180px)} }
+  @keyframes crawl3 { 0%{transform:translateX(0)} 100%{transform:translateX(120px)} }
+  .ant .bubble {
+    position: absolute;
+    background: #fffbe6;
+    border: 2px solid #3a2010;
+    padding: 6px 10px;
+    font-size: 10px;
+    border-radius: 8px;
+    top: 10px; right: 80px;
+  }
+  .ant .bubble::after {
+    content: ''; position: absolute;
+    bottom: -8px; left: 20px;
+    border: 6px solid transparent;
+    border-top-color: #3a2010;
+  }
+
+  /* ===========================================================
+     4. TAMAGOTCHI — wrist pet
+     =========================================================== */
+  .tama {
+    background: #1a1e1c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Press Start 2P', monospace;
+  }
+  .tama .device {
+    width: 240px; height: 280px;
+    background: #d94a6b;
+    border-radius: 50% / 40%;
+    padding: 24px;
+    box-shadow: inset 0 -10px 20px rgba(0,0,0,0.3), 0 8px 30px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .tama .screen {
+    background: #9cad3d;
+    height: 150px;
+    border: 4px solid #2a1a05;
+    border-radius: 8px;
+    padding: 10px;
+    position: relative;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+  }
+  .tama .screen .pet {
+    font-size: 8px; line-height: 1.2;
+    color: #1a1f08;
+    white-space: pre;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    animation: hop 1.2s ease-in-out infinite;
+  }
+  @keyframes hop { 0%,100%{transform:translate(-50%,-50%)} 50%{transform:translate(-50%,-56%)} }
+  .tama .screen .hud {
+    position: absolute; top: 4px; left: 6px; right: 6px;
+    display: flex; justify-content: space-between;
+    font-size: 7px; color: #1a1f08;
+  }
+  .tama .screen .z {
+    position: absolute;
+    top: 30px; right: 30px;
+    font-size: 10px; color: #1a1f08;
+    animation: zzz 2s ease-in-out infinite;
+  }
+  @keyframes zzz { 0%,100%{opacity:0.2;transform:translateY(0)} 50%{opacity:1;transform:translateY(-4px)} }
+  .tama .buttons {
+    display: flex; justify-content: space-around;
+    margin-top: 30px;
+  }
+  .tama .buttons span {
+    width: 28px; height: 28px;
+    background: #2a1a05;
+    border-radius: 50%;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.4);
+  }
+  .tama .label {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    color: #fff8; font-size: 6px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ===========================================================
+     5. TINY TOWER — isometric
+     =========================================================== */
+  .tower {
+    background: linear-gradient(#fdb36b 0 50%, #ff7a5a 100%);
+    position: relative;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+  }
+  .tower .sun {
+    position: absolute; top: 30px; right: 40px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: radial-gradient(#ffef8f, #ffb347);
+    box-shadow: 0 0 40px #ff7a5a;
+  }
+  .tower .bldg {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+  }
+  .tower .floor {
+    height: 52px;
+    border: 2px solid #2a1a3a;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: #e8d4a8;
+    position: relative;
+  }
+  .tower .floor + .floor { border-top: 0; }
+  .tower .floor.f2 { background: #b8d4e8; }
+  .tower .floor.f3 { background: #d4a8e8; }
+  .tower .floor.f4 { background: #a8e8b8; }
+  .tower .floor > div {
+    border-right: 1px dashed #2a1a3a55;
+    position: relative;
+  }
+  .tower .floor > div:last-child { border-right: 0; }
+  .tower .guy {
+    position: absolute;
+    bottom: 4px; left: 50%;
+    transform: translateX(-50%);
+    width: 6px; height: 10px;
+    background: #2a1a3a;
+  }
+  .tower .guy::before {
+    content: ''; position: absolute;
+    top: -5px; left: -1px;
+    width: 8px; height: 5px;
+    background: #f2c28a;
+  }
+  .tower .floor .tag {
+    position: absolute; top: 3px; left: 4px;
+    color: #2a1a3a; font-size: 7px;
+  }
+  .tower .floor .bubble {
+    position: absolute;
+    top: -18px; right: 6px;
+    background: #fff;
+    border: 2px solid #2a1a3a;
+    padding: 2px 6px;
+    font-size: 7px;
+    border-radius: 8px;
+    animation: bubble 1.4s ease-in-out infinite;
+  }
+  @keyframes bubble {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-3px); }
+  }
+  .tower .base {
+    height: 20px;
+    background: #2a1a3a;
+  }
+
+  /* ===========================================================
+     6. HOLO WAR-ROOM
+     =========================================================== */
+  .holo {
+    background: radial-gradient(ellipse at 50% 110%, #0a2a44 0%, #030812 70%);
+    font-family: 'Orbitron', sans-serif;
+    color: #6ae0ff;
+    position: relative;
+    overflow: hidden;
+  }
+  .holo::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(106,224,255,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(106,224,255,0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+    transform: perspective(400px) rotateX(60deg) translateY(40px);
+    transform-origin: bottom;
+  }
+  .holo .table {
+    position: absolute;
+    bottom: 10px; left: 10%; right: 10%;
+    height: 24px;
+    background: linear-gradient(#1a3a5a, #030812);
+    border-radius: 50%;
+    box-shadow: 0 0 60px 10px rgba(106,224,255,0.2);
+  }
+  .holo .node {
+    position: absolute;
+    width: 60px; height: 60px;
+    border: 1px solid #6ae0ff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; letter-spacing: 0.2em;
+    box-shadow: 0 0 20px #6ae0ff88, inset 0 0 16px #6ae0ff33;
+    background: radial-gradient(rgba(106,224,255,0.15), transparent);
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .holo .n1 { top: 80px;  left: 100px; }
+  .holo .n2 { top: 60px;  left: 240px; animation-delay: -1s; border-color: #ff8f5a; color: #ff8f5a; box-shadow: 0 0 24px #ff8f5aaa; }
+  .holo .n3 { top: 140px; left: 340px; animation-delay: -2s; }
+  .holo .line {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #6ae0ff, transparent);
+    opacity: 0.6;
+  }
+  .holo .l1 { top: 110px; left: 160px; width: 80px; transform: rotate(-8deg); }
+  .holo .l2 { top: 135px; left: 280px; width: 80px; transform: rotate(12deg); }
+  .holo .hud {
+    position: absolute; top: 14px; left: 14px;
+    font-size: 10px; letter-spacing: 0.3em;
+    color: #6ae0ff99;
+  }
+  .holo .hud b { color: #6ae0ff; }
+  .holo .readout {
+    position: absolute; top: 14px; right: 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #6ae0ff99;
+    text-align: right;
+  }
+  .holo .readout b { color: #ff8f5a; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Claude Town — Vibe Sketches <span>// 6 aesthetics, same use-case</span></h1>
+</header>
+
+<div class="grid">
+
+  <!-- 1. SEVERANCE -->
+  <div class="card">
+    <div class="card-label"><b>1. Severance MDR</b><span>Lumon × refinement loop</span></div>
+    <div class="stage sev">
+      <div class="sev-top"><span>CLAUDE TOWN</span><span>FLR 7 — MDR</span></div>
+      <div class="sev-title">AGENT OUTPUTS — PLEASE REFINE</div>
+      <div class="sev-hex">
+        <span>4F</span><span>A1</span><span>09</span><span>3C</span><span>7B</span><span>22</span><span>E4</span><span>11</span>
+        <span>08</span><span>5D</span><span>C3</span><span>6A</span><span>91</span><span>2F</span><span>B0</span><span>47</span>
+        <span>33</span><span>8E</span><span>14</span><span>DD</span><span>06</span><span>A9</span><span>71</span><span>5C</span>
+      </div>
+      <div class="sev-bar">
+        <span>MARK S. — 38%</span>
+        <div class="sev-prog"></div>
+        <span>QUOTA 0412</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MU-TH-UR -->
+  <div class="card">
+    <div class="card-label"><b>2. MU-TH-UR 6000</b><span>Cassette futurism</span></div>
+    <div class="stage muther">
+      <div class="mu-head"><span>MU/TH/UR 6000 :: CLAUDE_NET</span><span class="blink">_</span></div>
+      <div class="mu-body">
+        <div>&gt; AGENT.SALOON : ACTIVE</div>
+        <div>&gt; AGENT.BANK   : IDLE  </div>
+        <div>&gt; AGENT.SHERIFF: THINKING...</div>
+        <div>&gt; TOKENS 42,118 / 200K</div>
+        <div class="mu-alert">!! QUERY FROM AGENT.BANK !!<br/>&gt; APPROVE TOOL: git push?</div>
+      </div>
+      <div class="mu-keys">
+        <span>[Y] YES</span><span>[N] NO</span><span>[?] INFO</span><span>[ESC] HOLD</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ANT COLONY -->
+  <div class="card">
+    <div class="card-label"><b>3. Ant Colony</b><span>Filesystem = tunnel map</span></div>
+    <div class="stage ant">
+      <svg viewBox="0 0 460 360" preserveAspectRatio="none">
+        <!-- tunnels -->
+        <path d="M 40 100 L 40 330" stroke="#2a1505" stroke-width="18" fill="none"/>
+        <path d="M 40 150 L 440 150" stroke="#2a1505" stroke-width="18" fill="none"/>
+        <path d="M 180 150 L 180 220 L 360 220" stroke="#2a1505" stroke-width="16" fill="none"/>
+        <path d="M 80 220 L 260 220" stroke="#2a1505" stroke-width="14" fill="none"/>
+        <path d="M 110 220 L 110 320" stroke="#2a1505" stroke-width="14" fill="none"/>
+        <path d="M 260 220 L 260 300 L 420 300" stroke="#2a1505" stroke-width="14" fill="none"/>
+        <!-- grass -->
+        <path d="M 0 75 L 460 75" stroke="#3a6a2a" stroke-width="6" fill="none"/>
+      </svg>
+      <div class="tag" style="top: 34px; left: 20px;">~/repo/</div>
+      <div class="tag" style="top: 140px; left: 50px;">src/</div>
+      <div class="tag" style="top: 210px; left: 190px;">auth/</div>
+      <div class="tag" style="top: 290px; left: 270px;">tests/</div>
+      <div class="tag" style="top: 290px; left: 60px;">utils/</div>
+      <div class="dot-ant ant1"></div>
+      <div class="dot-ant ant2"></div>
+      <div class="dot-ant ant3"></div>
+      <div class="bubble">❓ login.ts — schema?</div>
+    </div>
+  </div>
+
+  <!-- 4. TAMAGOTCHI -->
+  <div class="card">
+    <div class="card-label"><b>4. Tamagotchi Pet</b><span>Mobile-native, widget-ready</span></div>
+    <div class="stage tama">
+      <div class="device">
+        <div class="label">CLAUDE&middot;TOWN</div>
+        <div class="screen">
+          <div class="hud"><span>♥♥♥</span><span>⚡82%</span></div>
+          <div class="z">Z</div>
+          <div class="pet">  ▄▄▄
+ █ o o█
+ █  v █
+  ▀▀▀
+ BANK-AGNT</div>
+        </div>
+        <div class="buttons"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. TINY TOWER -->
+  <div class="card">
+    <div class="card-label"><b>5. Tiny Tower</b><span>Vertical scroll, 20+ agents fit</span></div>
+    <div class="stage tower">
+      <div class="sun"></div>
+      <div class="bldg">
+        <div class="floor f4">
+          <div><span class="tag">auth</span><div class="guy"></div></div>
+          <div><div class="guy" style="background:#8a2a2a"></div></div>
+          <div></div>
+          <div class="bubble">?</div>
+        </div>
+        <div class="floor f3">
+          <div></div>
+          <div><span class="tag">pay</span><div class="guy"></div></div>
+          <div><div class="guy" style="background:#2a5a8a"></div></div>
+        </div>
+        <div class="floor f2">
+          <div><div class="guy"></div></div>
+          <div></div>
+          <div><span class="tag">api</span><div class="guy" style="background:#5a2a8a"></div></div>
+        </div>
+        <div class="floor">
+          <div><span class="tag">www</span><div class="guy"></div></div>
+          <div><div class="guy"></div></div>
+          <div><div class="guy"></div></div>
+        </div>
+        <div class="base"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. HOLO -->
+  <div class="card">
+    <div class="card-label"><b>6. Holo War-Room</b><span>Dune × Avengers table</span></div>
+    <div class="stage holo">
+      <div class="hud">CLAUDE / TOWN <br/><b>ORBIT 03</b></div>
+      <div class="readout">
+        AGENTS: 03<br/>
+        TOKENS: 42.1K<br/>
+        <b>ALERT: BANK ×1</b>
+      </div>
+      <div class="line l1"></div>
+      <div class="line l2"></div>
+      <div class="node n1">SALOON</div>
+      <div class="node n2">BANK ⚠</div>
+      <div class="node n3">SHRFF</div>
+      <div class="table"></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

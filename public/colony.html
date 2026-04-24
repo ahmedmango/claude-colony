@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Colony</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0805; font-family: 'IBM Plex Mono', monospace; color: #f2d9a8; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+
+  /* ---------- TOP BAR ---------- */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 44px;
+    background: rgba(10, 4, 0, 0.9);
+    border-bottom: 1px solid #5a3a20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px;
+    z-index: 30;
+    backdrop-filter: blur(6px);
+    font-family: 'Silkscreen', monospace;
+  }
+  .topbar .brand {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .topbar .logo {
+    width: 22px; height: 22px;
+    background: radial-gradient(#ffb870, #c06030);
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ffb87088;
+    position: relative;
+  }
+  .topbar .logo::after {
+    content: '●●●';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 6px; color: #0a0400; letter-spacing: -1px;
+  }
+  .topbar .name { color: #ffb870; font-size: 14px; letter-spacing: 0.2em; }
+  .topbar .ver  { color: #8a7a60; font-size: 10px; letter-spacing: 0.1em; margin-left: 4px; }
+  .topbar .nav { display: flex; gap: 6px; }
+  .topbar .btn {
+    background: transparent;
+    border: 1px solid #5a3a20;
+    color: #f2d9a8;
+    font-family: inherit;
+    font-size: 10px;
+    padding: 5px 10px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    border-radius: 2px;
+    position: relative;
+  }
+  .topbar .btn:hover { background: #2a1605; border-color: #ffb870; color: #ffb870; }
+  .topbar .btn .badge {
+    position: absolute;
+    top: -6px; right: -6px;
+    background: #ff4020;
+    color: #fff;
+    font-size: 9px;
+    min-width: 16px; height: 16px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 4px;
+    animation: badgePulse 1s ease-in-out infinite;
+  }
+  @keyframes badgePulse {
+    0%,100% { box-shadow: 0 0 0 0 #ff4020aa; }
+    50%     { box-shadow: 0 0 0 6px transparent; }
+  }
+
+  /* ---------- BACKGROUND LAYERS ---------- */
+  .sky {
+    position: absolute; top: 44px; left: 0; right: 0; height: calc(18% - 4px);
+    background: linear-gradient(#1a0a22 0%, #3a1a45 40%, #8a3a4a 75%, #d48250 100%);
+  }
+  .stars {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 12% 20%, #fff, transparent),
+      radial-gradient(1px 1px at 34% 40%, #fff8, transparent),
+      radial-gradient(1px 1px at 58% 15%, #fff, transparent),
+      radial-gradient(1px 1px at 72% 50%, #fffa, transparent),
+      radial-gradient(1px 1px at 88% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 22% 70%, #fff8, transparent),
+      radial-gradient(1.5px 1.5px at 45% 80%, #fff, transparent);
+    animation: twinkle 4s ease-in-out infinite;
+  }
+  @keyframes twinkle { 0%,100%{opacity:0.7} 50%{opacity:1} }
+
+  .moon {
+    position: absolute; top: 8%; right: 8%;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: radial-gradient(#fff5cc, #e8b87a);
+    box-shadow: 0 0 40px #ffb870aa, 0 0 80px #ff885033;
+  }
+
+  .grass {
+    position: absolute; left: 0; right: 0;
+    top: calc(18% + 40px); height: 4%;
+    background: linear-gradient(#3a5a2a, #2a4020);
+  }
+  .grass::before {
+    content: '';
+    position: absolute; left: 0; right: 0; top: -4px; height: 8px;
+    background-image: repeating-linear-gradient(90deg,
+      #2a4020 0px, #2a4020 3px, transparent 3px, transparent 7px,
+      #3a5a2a 7px, #3a5a2a 10px, transparent 10px, transparent 14px);
+  }
+
+  .soil-layers {
+    position: absolute; left: 0; right: 0; top: calc(22% + 40px); bottom: 0;
+    background:
+      linear-gradient(#4a2f1a 0%, #3a2010 30%, #2a1605 70%, #1a0a05 100%);
+  }
+  .soil-layers::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 10% 20%, #5a3a20 0 3px, transparent 4px),
+      radial-gradient(circle at 30% 60%, #3a1a0a 0 5px, transparent 6px),
+      radial-gradient(circle at 55% 30%, #5a3520 0 4px, transparent 5px),
+      radial-gradient(circle at 75% 70%, #2a1000 0 6px, transparent 7px),
+      radial-gradient(circle at 90% 40%, #4a2810 0 3px, transparent 4px),
+      radial-gradient(circle at 20% 85%, #1a0800 0 8px, transparent 10px);
+    opacity: 0.7;
+  }
+
+  /* ---------- TREE ---------- */
+  .tree {
+    position: absolute; top: calc(14% + 44px); left: 50%; transform: translateX(-50%);
+    width: 16px; height: 90px;
+    background: #2a1605;
+    z-index: 2;
+  }
+  .tree::before {
+    content: '';
+    position: absolute; bottom: 60px; left: -50px;
+    width: 120px; height: 80px;
+    background: radial-gradient(ellipse, #2a4525 60%, transparent 62%);
+  }
+  .tree::after {
+    content: '~/claude-colony';
+    position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+    color: #f2d9a8; font-size: 10px; white-space: nowrap;
+    font-family: 'Silkscreen', monospace;
+    text-shadow: 0 0 4px #000;
+  }
+
+  /* ---------- TUNNELS ---------- */
+  .tunnels { position: absolute; inset: 44px 0 0 0; width: 100%; height: calc(100% - 44px); }
+
+  /* ---------- ANTS ---------- */
+  .ant {
+    position: absolute;
+    width: 18px; height: 10px;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 5;
+    transform-origin: center;
+  }
+  .ant .body::before {
+    content: '';
+    position: absolute; left: 2px; top: 2px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--c, #1a0a05);
+    box-shadow: 8px 0 0 var(--c, #1a0a05), 15px 0 0 var(--c, #1a0a05);
+  }
+  .ant .legs { position: absolute; left: 0; right: 0; top: -3px; height: 16px; }
+  .ant .legs::before, .ant .legs::after {
+    content: '';
+    position: absolute; left: 4px; width: 12px; height: 1px;
+    background: var(--c, #1a0a05);
+  }
+  .ant .legs::before { top: 0; transform: rotate(-20deg); animation: scurry 0.2s infinite alternate; }
+  .ant .legs::after  { bottom: 0; transform: rotate(20deg); animation: scurry 0.2s infinite alternate reverse; }
+  @keyframes scurry {
+    0% { transform: rotate(-20deg) scaleX(1); }
+    100% { transform: rotate(-28deg) scaleX(0.8); }
+  }
+  .ant .cargo {
+    position: absolute; top: -6px; left: 7px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--cargo, #ffde5a);
+    box-shadow: 0 0 6px var(--cargo, #ffde5a);
+  }
+  /* Ant waiting state: big pulsing ring + halo */
+  .ant.waiting {
+    filter: drop-shadow(0 0 10px #ff8f3a);
+  }
+  .ant.waiting::before {
+    content: '';
+    position: absolute;
+    top: -14px; left: -10px; right: -10px; bottom: -14px;
+    border-radius: 50%;
+    border: 2px solid #ff8f3a;
+    animation: waitingRing 1.2s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes waitingRing {
+    0%   { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  .ant.soldier { transform: scale(1.3); }
+
+  /* ---------- SPEECH BUBBLE ---------- */
+  .bubble {
+    position: absolute;
+    background: #fffbe6;
+    color: #1a0a05;
+    border: 2px solid #1a0a05;
+    padding: 8px 12px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    border-radius: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: bob 1.2s ease-in-out infinite;
+    box-shadow: 0 0 20px #ff8f3aaa, 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .bubble::after {
+    content: '';
+    position: absolute; bottom: -8px; left: 16px;
+    border: 7px solid transparent;
+    border-top-color: #1a0a05;
+  }
+  .bubble::before {
+    content: '';
+    position: absolute; bottom: -5px; left: 18px;
+    border: 5px solid transparent;
+    border-top-color: #fffbe6;
+    z-index: 1;
+  }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  .bubble .q { color: #c03810; font-weight: bold; margin-right: 4px; }
+  .bubble .hint {
+    display: block;
+    font-size: 8px;
+    color: #8a7a60;
+    margin-top: 2px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ---------- QUEEN ---------- */
+  .queen-chamber {
+    position: absolute;
+    left: 50%; bottom: 4%;
+    transform: translateX(-50%);
+    width: 220px; height: 120px;
+    border: 3px solid #5a2a15;
+    border-radius: 50% 50% 40% 40%;
+    background: radial-gradient(ellipse at center, #3a1a08 0%, #1a0800 80%);
+    box-shadow: inset 0 0 30px #0a0400, 0 0 40px #c04a1a33;
+    z-index: 3;
+  }
+  .queen { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 40px; height: 22px; }
+  .queen::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: #c03a2a;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #ff5a3aaa;
+  }
+  .queen::after {
+    content: '♕';
+    position: absolute; left: 50%; top: -16px;
+    transform: translateX(-50%);
+    font-size: 18px;
+    color: #ffde5a;
+    text-shadow: 0 0 8px #ffb040;
+  }
+  .queen-label {
+    position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%);
+    font-family: 'Silkscreen', monospace; font-size: 9px;
+    color: #f2d9a8; letter-spacing: 0.15em;
+  }
+  .egg {
+    position: absolute;
+    width: 8px; height: 10px;
+    background: #ffe8a8;
+    border-radius: 50%;
+    box-shadow: 0 0 4px #ffb870;
+    animation: glow 2s ease-in-out infinite;
+  }
+  @keyframes glow {
+    0%,100% { box-shadow: 0 0 4px #ffb870; }
+    50%     { box-shadow: 0 0 12px #ffde5a; }
+  }
+
+  /* ---------- FILE TAGS ---------- */
+  .ftag {
+    position: absolute;
+    background: rgba(10, 4, 0, 0.85);
+    color: #f2d9a8;
+    border: 1px solid #5a3a20;
+    padding: 2px 6px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .ftag.dir { color: #ffb870; }
+  .ftag.file { color: #a8d08a; }
+
+  /* ---------- TASK LEAVES ---------- */
+  .task-leaf {
+    position: absolute; font-size: 18px; cursor: grab;
+    animation: sway 3s ease-in-out infinite;
+    transform-origin: bottom center;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    z-index: 4;
+  }
+  @keyframes sway { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+
+  /* ---------- HUD ---------- */
+  .hud {
+    position: absolute;
+    background: rgba(10, 4, 0, 0.88);
+    border: 1px solid #5a3a20;
+    padding: 10px 14px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    color: #f2d9a8;
+    z-index: 20;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+  .hud h3 {
+    color: #ffb870;
+    font-size: 9px; letter-spacing: 0.2em;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hud h3 .help { color: #8a7a60; cursor: help; font-size: 10px; }
+  .hud-tl { top: 60px; left: 16px; min-width: 210px; }
+  .hud-tr { top: 60px; right: 16px; min-width: 200px; text-align: right; }
+  .hud-bl { bottom: 16px; left: 16px; max-width: 340px; }
+  .stat { display: flex; justify-content: space-between; gap: 12px; margin: 3px 0; line-height: 1.3; }
+  .stat b { color: #ffde5a; font-weight: 400; }
+  .bar { width: 100%; height: 4px; background: #2a1605; margin-top: 2px; border-radius: 2px; overflow: hidden; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, #ffb870, #ff6040); }
+  .log-line { color: #a8a090; font-size: 9px; margin: 2px 0; }
+  .log-line b { color: #ffde5a; }
+  .log-line span.err { color: #ff6a4a; }
+  .log-line span.ok { color: #8ad06a; }
+
+  .alert { color: #ff6040; animation: alertp 0.8s ease-in-out infinite; }
+  @keyframes alertp { 50% { opacity: 0.4; } }
+
+  /* ---------- INBOX PANEL ---------- */
+  .inbox {
+    position: absolute;
+    top: 260px; right: 16px;
+    width: 240px;
+    background: rgba(10, 4, 0, 0.92);
+    border: 2px solid #ff6040;
+    padding: 12px 14px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    color: #f2d9a8;
+    z-index: 20;
+    border-radius: 4px;
+    box-shadow: 0 0 24px #ff604055;
+    animation: inboxGlow 2s ease-in-out infinite;
+  }
+  @keyframes inboxGlow {
+    0%,100% { box-shadow: 0 0 24px #ff604055; }
+    50%     { box-shadow: 0 0 36px #ff6040aa; }
+  }
+  .inbox h3 {
+    color: #ff6040; font-size: 10px; letter-spacing: 0.2em;
+    margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .inbox .count {
+    background: #ff4020; color: #fff;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+  .inbox-item {
+    border: 1px solid #5a3a20;
+    padding: 6px 8px;
+    margin: 4px 0;
+    cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 6px;
+  }
+  .inbox-item:hover { background: #2a1605; border-color: #ffb870; }
+  .inbox-item .name { color: #ffb870; font-size: 9px; }
+  .inbox-item .q { color: #f2d9a8; font-size: 9px; }
+  .inbox-item .arrow { color: #ff8f3a; }
+
+  /* ---------- LEGEND ---------- */
+  .legend {
+    position: absolute; bottom: 16px; right: 16px;
+    background: rgba(10,4,0,0.88);
+    border: 1px solid #5a3a20;
+    padding: 10px 14px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 9px; color: #f2d9a8;
+    border-radius: 4px; z-index: 20;
+  }
+  .legend h3 { color: #ffb870; font-size: 9px; margin-bottom: 6px; letter-spacing: 0.2em; }
+  .legend .row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ---------- TOOLTIP ---------- */
+  #tooltip {
+    position: absolute;
+    background: #0a0400;
+    border: 1px solid #ffb870;
+    padding: 8px 12px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    color: #f2d9a8;
+    z-index: 50;
+    pointer-events: none;
+    display: none;
+    min-width: 180px;
+    box-shadow: 0 0 12px #ffb87044;
+  }
+  #tooltip h4 { color: #ffb870; margin-bottom: 4px; font-size: 10px; letter-spacing: 0.1em; }
+  #tooltip .row { display: flex; justify-content: space-between; gap: 8px; margin: 2px 0; }
+  #tooltip .row b { color: #ffde5a; font-weight: normal; }
+  #tooltip .hint { margin-top: 6px; color: #8a7a60; font-size: 8px; letter-spacing: 0.1em; }
+
+  /* ---------- WORM / FIREFLY ---------- */
+  .worm {
+    position: absolute;
+    width: 40px; height: 4px;
+    background: linear-gradient(90deg, #c06a4a, #e89470, #c06a4a);
+    border-radius: 4px;
+    animation: worm-wiggle 3s ease-in-out infinite;
+    opacity: 0.6;
+    z-index: 1;
+  }
+  @keyframes worm-wiggle { 0%,100%{transform:translate(0,0) rotate(-5deg)} 50%{transform:translate(20px,4px) rotate(8deg)} }
+  .firefly {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #ffde5a;
+    box-shadow: 0 0 6px #ffde5a;
+    animation: float-f 6s ease-in-out infinite;
+    z-index: 15;
+    pointer-events: none;
+  }
+  @keyframes float-f {
+    0%,100% { transform: translate(0,0); opacity: 0.3; }
+    25% { transform: translate(20px,-15px); opacity: 1; }
+    50% { transform: translate(-15px,-25px); opacity: 0.6; }
+    75% { transform: translate(10px,-10px); opacity: 0.9; }
+  }
+
+  /* ---------- FOOTER ---------- */
+  .footer {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    background: rgba(10, 4, 0, 0.92);
+    border: 1px solid #5a3a20;
+    border-bottom: 0;
+    padding: 6px 18px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 9px;
+    color: #8a7a60;
+    z-index: 20;
+    border-radius: 6px 6px 0 0;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .footer b { color: #8ad06a; }
+  .footer a { color: #ffb870; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* ---------- MODAL (tour + help) ---------- */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal {
+    background: #1a0a05;
+    border: 2px solid #ffb870;
+    width: 680px; max-width: 90vw; max-height: 86vh;
+    padding: 30px 36px;
+    color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    border-radius: 8px;
+    box-shadow: 0 0 60px #ffb87066;
+    position: relative;
+    overflow-y: auto;
+  }
+  .modal h1 {
+    color: #ffb870;
+    font-family: 'Silkscreen', monospace;
+    font-size: 22px;
+    letter-spacing: 0.2em;
+    margin-bottom: 6px;
+  }
+  .modal .sub {
+    color: #8a7a60;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+    font-family: 'Silkscreen', monospace;
+  }
+  .modal h2 {
+    color: #ffde5a;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    margin: 18px 0 8px;
+    font-family: 'Silkscreen', monospace;
+    border-bottom: 1px solid #5a3a20;
+    padding-bottom: 4px;
+  }
+  .modal .row-item {
+    display: flex;
+    gap: 14px;
+    margin: 10px 0;
+    align-items: flex-start;
+  }
+  .modal .row-item .ic {
+    flex-shrink: 0;
+    width: 26px;
+    font-size: 18px;
+    text-align: center;
+    padding-top: 2px;
+  }
+  .modal .row-item b { color: #ffb870; font-weight: 500; }
+  .modal kbd {
+    background: #2a1605;
+    border: 1px solid #5a3a20;
+    padding: 1px 6px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    color: #ffde5a;
+    border-radius: 2px;
+  }
+  .modal code {
+    background: #0a0400;
+    padding: 1px 6px;
+    color: #8ad06a;
+    font-size: 11px;
+    border-radius: 2px;
+  }
+  .modal .close {
+    position: absolute; top: 12px; right: 16px;
+    background: transparent;
+    border: 1px solid #5a3a20;
+    color: #f2d9a8;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .modal .close:hover { background: #ff4020; color: #fff; border-color: #ff4020; }
+  .modal .cta {
+    margin-top: 20px;
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .modal .cta button {
+    background: #ffb870; color: #1a0a05;
+    border: 0; padding: 8px 18px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .modal .cta button:hover { background: #ffde5a; }
+  .modal .cta button.ghost {
+    background: transparent; color: #f2d9a8;
+    border: 1px solid #5a3a20;
+  }
+  .modal .cta button.ghost:hover { border-color: #ffb870; color: #ffb870; }
+  .modal .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px 24px;
+    margin-top: 10px;
+  }
+  .modal .compute-box {
+    background: #0a0400;
+    border: 1px solid #5a3a20;
+    padding: 14px 16px;
+    margin: 12px 0;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .modal .compute-box b { color: #8ad06a; }
+  .modal .compute-box .flow {
+    font-family: 'Silkscreen', monospace;
+    color: #ffb870;
+    font-size: 11px;
+    margin: 8px 0;
+  }
+
+  /* Floating edge arrow for off-screen waiting ants */
+  .offscreen-arrow {
+    position: absolute;
+    font-size: 22px;
+    color: #ff8f3a;
+    z-index: 25;
+    animation: arrowBounce 0.8s ease-in-out infinite;
+    text-shadow: 0 0 10px #ff4020;
+    pointer-events: none;
+    display: none;
+  }
+  @keyframes arrowBounce {
+    0%,100% { transform: translateX(0); }
+    50% { transform: translateX(6px); }
+  }
+
+  /* ---------- DRAWER ---------- */
+  .drawer {
+    position: fixed;
+    top: 44px; right: 0; bottom: 0;
+    width: 520px; max-width: 96vw;
+    background: #120905;
+    border-left: 2px solid #5a3a20;
+    z-index: 40;
+    transform: translateX(102%);
+    transition: transform 0.32s cubic-bezier(.2,.7,.3,1);
+    display: flex; flex-direction: column;
+    font-family: 'IBM Plex Mono', monospace;
+    color: #f2d9a8;
+    box-shadow: -10px 0 40px rgba(0,0,0,0.7);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid #5a3a20;
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,184,112,0.04);
+  }
+  .drawer-head .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #f2d9a8 0 3px, var(--acolor, #c04020) 4px);
+    box-shadow: 0 0 12px var(--acolor, #c04020);
+    position: relative;
+  }
+  .drawer-head .avatar::after {
+    content: '●';
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    color: rgba(0,0,0,0.6);
+  }
+  .drawer-head .id { flex: 1; }
+  .drawer-head .name { color: #ffb870; font-family: 'Silkscreen', monospace; letter-spacing: 0.15em; font-size: 13px; }
+  .drawer-head .state { color: #8ad06a; font-size: 10px; margin-top: 2px; letter-spacing: 0.15em; font-family: 'Silkscreen', monospace; }
+  .drawer-head .state.waiting { color: #ff8f3a; animation: alertp 1s infinite; }
+  .drawer-head .close {
+    background: transparent; border: 1px solid #5a3a20; color: #f2d9a8;
+    width: 32px; height: 32px;
+    cursor: pointer; border-radius: 2px;
+    font-family: 'Silkscreen', monospace;
+  }
+  .drawer-head .close:hover { background: #ff4020; color: #fff; border-color: #ff4020; }
+  .drawer-tabs {
+    display: flex;
+    border-bottom: 1px solid #5a3a20;
+  }
+  .drawer-tabs .tab {
+    flex: 1;
+    padding: 10px 4px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: #8a7a60;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+  }
+  .drawer-tabs .tab.active { color: #ffb870; border-bottom-color: #ffb870; background: rgba(255,184,112,0.04); }
+  .drawer-tabs .tab:hover { color: #f2d9a8; }
+  .drawer-tabs .tab .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #ff4020;
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: alertp 0.8s infinite;
+  }
+
+  .drawer-body {
+    flex: 1; overflow-y: auto;
+    padding: 14px 18px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  /* chat messages */
+  .chat-msg { margin: 10px 0; }
+  .chat-msg .role {
+    font-family: 'Silkscreen', monospace; font-size: 9px;
+    letter-spacing: 0.18em;
+    color: #8a7a60;
+    margin-bottom: 4px;
+  }
+  .chat-msg.agent .role { color: #ffb870; }
+  .chat-msg.user .role  { color: #8ad06a; }
+  .chat-msg.tool .role  { color: #6ae0ff; }
+  .chat-msg .body {
+    padding: 8px 12px;
+    border-left: 2px solid #5a3a20;
+    color: #e2d2a8;
+    background: rgba(255,255,255,0.02);
+    border-radius: 0 3px 3px 0;
+  }
+  .chat-msg.agent .body { border-color: #ffb870; }
+  .chat-msg.user  .body { border-color: #8ad06a; background: rgba(138,208,106,0.06); }
+  .chat-msg.tool  .body { border-color: #6ae0ff; background: rgba(106,224,255,0.04); font-size: 11px; color: #a8c8d8; }
+  .chat-msg.tool .tname { color: #6ae0ff; font-weight: 600; }
+  .chat-msg.waiting {
+    border: 1px solid #ff8f3a;
+    padding: 12px;
+    border-radius: 4px;
+    background: rgba(255,143,58,0.1);
+    box-shadow: 0 0 16px rgba(255,143,58,0.3);
+    margin: 18px 0;
+  }
+  .chat-msg.waiting .title { color: #ff8f3a; font-family: 'Silkscreen', monospace; font-size: 10px; margin-bottom: 8px; letter-spacing: 0.2em; }
+  .chat-msg.waiting .q    { font-size: 13px; color: #fff; margin-bottom: 12px; line-height: 1.5; }
+  .chat-msg.waiting .q b  { color: #ffde5a; }
+  .chat-msg.waiting .actions { display: flex; gap: 8px; }
+  .chat-msg.waiting .actions button {
+    flex: 1;
+    padding: 9px 8px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    border: 1px solid #5a3a20;
+    background: transparent;
+    color: #f2d9a8;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .chat-msg.waiting .actions .approve { background: #8ad06a; color: #0a0400; border-color: #8ad06a; }
+  .chat-msg.waiting .actions .approve:hover { background: #a8e88a; }
+  .chat-msg.waiting .actions .deny    { background: #ff4020; color: #fff; border-color: #ff4020; }
+  .chat-msg.waiting .actions .deny:hover { background: #ff6040; }
+  .chat-msg.waiting .actions .details:hover { border-color: #ffb870; color: #ffb870; }
+
+  .drawer-input {
+    border-top: 1px solid #5a3a20;
+    padding: 10px 14px;
+    display: flex; gap: 8px;
+    background: #0a0400;
+  }
+  .drawer-input textarea {
+    flex: 1;
+    background: transparent;
+    border: 1px solid #5a3a20;
+    color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 2px;
+    resize: none;
+    height: 42px;
+  }
+  .drawer-input textarea:focus { outline: none; border-color: #ffb870; }
+  .drawer-input .send {
+    background: #ffb870; color: #0a0400;
+    border: 0;
+    padding: 0 16px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .drawer-input .send:hover { background: #ffde5a; }
+
+  /* GIT panel */
+  .git-panel .branch-line {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: rgba(106,224,255,0.06);
+    border: 1px solid #3a5a6a;
+    font-size: 11px;
+    margin-bottom: 12px;
+    border-radius: 3px;
+  }
+  .git-panel .branch-line b   { color: #6ae0ff; }
+  .git-panel .branch-line .base { color: #ffb870; }
+  .git-panel .branch-line .arrow { color: #8a7a60; }
+  .git-panel .stat-row {
+    display: flex; justify-content: space-between;
+    padding: 5px 0;
+    font-size: 11px;
+    border-bottom: 1px dashed #3a2010;
+  }
+  .git-panel .stat-row b { color: #ffde5a; font-weight: 500; }
+  .git-panel h4 {
+    color: #ffb870;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    margin: 16px 0 8px;
+  }
+  .git-panel .file-row {
+    display: flex; justify-content: space-between;
+    padding: 7px 10px;
+    font-size: 11px;
+    background: rgba(255,255,255,0.02);
+    margin: 3px 0;
+    border-left: 3px solid;
+    border-radius: 0 2px 2px 0;
+  }
+  .git-panel .file-row.m { border-color: #ffde5a; }
+  .git-panel .file-row.a { border-color: #8ad06a; }
+  .git-panel .file-row.d { border-color: #ff6040; }
+  .git-panel .file-row .plus  { color: #8ad06a; }
+  .git-panel .file-row .minus { color: #ff6040; }
+  .git-panel .commit-row {
+    padding: 7px 0;
+    border-bottom: 1px dashed #3a2010;
+    font-size: 11px;
+    display: flex; gap: 10px;
+  }
+  .git-panel .commit-row .sha { color: #8a7a60; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+  .git-panel .commit-row .msg { color: #f2d9a8; }
+  .git-panel .push-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    background: #ff8f3a;
+    color: #0a0400;
+    border: 0;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .git-panel .push-btn:hover { background: #ffb870; }
+
+  .deploy-panel .card {
+    padding: 12px 14px;
+    background: rgba(138,208,106,0.08);
+    border: 1px solid #3a5a2a;
+    margin-bottom: 10px;
+    border-radius: 3px;
+  }
+  .deploy-panel .card h5 {
+    color: #8ad06a;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    margin-bottom: 8px;
+    letter-spacing: 0.2em;
+  }
+  .deploy-panel .card .row {
+    display: flex; justify-content: space-between;
+    padding: 3px 0;
+    font-size: 11px;
+  }
+  .deploy-panel .card .row b { color: #8ad06a; }
+  .deploy-panel a { color: #6ae0ff; text-decoration: none; }
+  .deploy-panel .log-tail {
+    background: #0a0400;
+    border: 1px solid #3a2010;
+    padding: 10px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #a8a090;
+    line-height: 1.6;
+    margin-top: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+    white-space: pre;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo"></div>
+    <span class="name">CLAUDE COLONY</span>
+    <span class="ver">v0.1.0 — opensource</span>
+  </div>
+  <div class="nav">
+    <button class="btn" id="btnInbox">◆ INBOX <span class="badge" id="inboxBadge">1</span></button>
+    <button class="btn" id="btnHelp">? HELP</button>
+    <button class="btn" id="btnTour">◆ TOUR</button>
+    <button class="btn">◆ SPAWN +</button>
+  </div>
+</div>
+
+<div id="stage">
+
+  <!-- Sky -->
+  <div class="sky"><div class="stars"></div></div>
+  <div class="moon"></div>
+  <div class="grass"></div>
+  <div class="soil-layers"></div>
+  <div class="tree"></div>
+
+  <div class="firefly" style="top: 12%; left: 20%;"></div>
+  <div class="firefly" style="top: 16%; left: 68%; animation-delay: -2s;"></div>
+  <div class="firefly" style="top: 10%; left: 40%; animation-delay: -4s;"></div>
+
+  <div class="task-leaf" style="top: 19%; left: 16%;" title="pending: refactor auth">🍂</div>
+  <div class="task-leaf" style="top: 20%; left: 74%; animation-delay: -1s;" title="pending: write tests">🌿</div>
+  <div class="task-leaf" style="top: 19.5%; left: 86%; animation-delay: -2s;" title="pending: update deps">🍁</div>
+
+  <div class="worm" style="top: 70%; left: 12%;"></div>
+  <div class="worm" style="top: 48%; left: 82%; animation-delay: -1.5s;"></div>
+
+  <svg class="tunnels" viewBox="0 0 1600 900" preserveAspectRatio="none" id="tunnelsSvg">
+    <path id="p_trunk" d="M 800 160 C 800 220, 780 260, 800 340 S 820 500, 800 640" stroke="#1a0800" stroke-width="22" fill="none" stroke-linecap="round"/>
+    <path id="p_src"   d="M 800 340 C 680 350, 580 390, 440 420" stroke="#1a0800" stroke-width="20" fill="none" stroke-linecap="round"/>
+    <path id="p_auth"  d="M 440 420 C 360 440, 320 520, 260 580" stroke="#1a0800" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path id="p_utils" d="M 440 420 C 430 470, 470 540, 520 620" stroke="#1a0800" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <path id="p_api"   d="M 800 450 C 940 460, 1040 490, 1180 500" stroke="#1a0800" stroke-width="20" fill="none" stroke-linecap="round"/>
+    <path id="p_routes" d="M 1180 500 C 1260 520, 1320 570, 1360 640" stroke="#1a0800" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path id="p_db"    d="M 1180 500 C 1200 560, 1180 620, 1140 680" stroke="#1a0800" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <path id="p_tests_entry" d="M 400 180 C 400 240, 380 280, 360 340" stroke="#1a0800" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path id="p_tests" d="M 360 340 C 300 380, 260 430, 200 480" stroke="#1a0800" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <path id="p_ui_entry" d="M 1200 180 C 1200 240, 1220 280, 1240 340" stroke="#1a0800" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path id="p_ui"    d="M 1240 340 C 1280 380, 1320 410, 1380 440" stroke="#1a0800" stroke-width="16" fill="none" stroke-linecap="round"/>
+
+    <!-- Pheromone trails -->
+    <path d="M 800 340 C 680 350, 580 390, 440 420" stroke="#ffb870" stroke-width="2" fill="none" opacity="0.35" stroke-dasharray="4 6">
+      <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 800 450 C 940 460, 1040 490, 1180 500" stroke="#ff6040" stroke-width="2" fill="none" opacity="0.55" stroke-dasharray="4 6">
+      <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="1s" repeatCount="indefinite"/>
+    </path>
+
+    <circle cx="440" cy="420" r="6" fill="#8ad06a" opacity="0.8">
+      <animate attributeName="r" values="5;10;5" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.9;0.2;0.9" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1180" cy="500" r="6" fill="#ff6040" opacity="0.8">
+      <animate attributeName="r" values="5;12;5" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="360" cy="340" r="5" fill="#8ad06a" opacity="0.7">
+      <animate attributeName="r" values="4;8;4" dur="3s" repeatCount="indefinite"/>
+    </circle>
+
+    <path d="M 800 160 C 790 180, 820 200, 810 220" stroke="#2a1605" stroke-width="3" fill="none"/>
+    <path d="M 800 160 C 770 170, 750 190, 740 210" stroke="#2a1605" stroke-width="2" fill="none"/>
+    <path d="M 800 160 C 830 175, 850 200, 855 230" stroke="#2a1605" stroke-width="2" fill="none"/>
+  </svg>
+
+  <div class="ftag dir" style="top: 27%; left: 48.5%;">src/</div>
+  <div class="ftag dir" style="top: 48%; left: 25%;">auth/</div>
+  <div class="ftag file" style="top: 66%; left: 13%;">login.ts</div>
+  <div class="ftag file" style="top: 70%; left: 31%;">utils.ts</div>
+  <div class="ftag dir" style="top: 52%; left: 72%;">api/</div>
+  <div class="ftag file" style="top: 73%; left: 83%;">routes.ts</div>
+  <div class="ftag file" style="top: 78%; left: 68%;">db.ts</div>
+  <div class="ftag dir" style="top: 27%; left: 23%;">tests/</div>
+  <div class="ftag file" style="top: 55%; left: 10%;">auth.test</div>
+  <div class="ftag dir" style="top: 27%; left: 73%;">ui/</div>
+  <div class="ftag file" style="top: 50%; left: 85%;">App.tsx</div>
+
+  <div id="ants"></div>
+  <div id="bubbles"></div>
+
+  <!-- Queen -->
+  <div class="queen-chamber">
+    <div class="queen-label">⚐ QUEEN (YOU)</div>
+    <div class="queen"></div>
+    <div class="egg" style="left: 20%; bottom: 20%;"></div>
+    <div class="egg" style="left: 75%; bottom: 25%; animation-delay: -1s;"></div>
+    <div class="egg" style="left: 40%; bottom: 12%; animation-delay: -0.5s;"></div>
+    <div class="egg" style="left: 60%; bottom: 40%; animation-delay: -1.5s;"></div>
+  </div>
+
+  <!-- HUD Top Left -->
+  <div class="hud hud-tl">
+    <h3>◆ COLONY <span class="help" title="Overview of all active agents by role">?</span></h3>
+    <div class="stat"><span>AGENTS</span><b>6 active</b></div>
+    <div class="stat"><span>SCOUTS</span><b>2 (reading)</b></div>
+    <div class="stat"><span>WORKERS</span><b>3 (editing)</b></div>
+    <div class="stat"><span>SOLDIER</span><b>1 (review)</b></div>
+    <div class="stat"><span>TASKS</span><b>3 pending</b></div>
+    <div class="stat"><span>EGGS</span><b>4 queued</b></div>
+  </div>
+
+  <!-- HUD Top Right -->
+  <div class="hud hud-tr">
+    <h3>◆ RESOURCES <span class="help" title="Remote compute spend. Your laptop only renders.">?</span></h3>
+    <div class="stat"><span>TOKENS</span><b>84.2K / 200K</b></div>
+    <div class="bar"><div style="width: 42%"></div></div>
+    <div class="stat" style="margin-top:8px"><span>COST</span><b>$2.41</b></div>
+    <div class="stat"><span>ELAPSED</span><b>00:18:43</b></div>
+    <div class="stat"><span>COMPUTE</span><b style="color:#8ad06a">◉ REMOTE</b></div>
+    <div class="stat"><span>LAPTOP CPU</span><b style="color:#8ad06a">2%</b></div>
+  </div>
+
+  <!-- INBOX panel (right side, below resources) -->
+  <div class="inbox" id="inboxPanel">
+    <h3>⚠ NEEDS YOU <span class="count" id="inboxCount">1</span></h3>
+    <div class="inbox-item" id="inboxItem1">
+      <div>
+        <div class="name">worker-03</div>
+        <div class="q">git push to main?</div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <!-- HUD Bottom Left: log -->
+  <div class="hud hud-bl">
+    <h3>◆ COLONY LOG <span class="help" title="Real-time event stream from all ants.">?</span></h3>
+    <div class="log-line"><b>[18:41]</b> scout-01 → <span class="ok">read src/auth/login.ts</span></div>
+    <div class="log-line"><b>[18:42]</b> worker-02 → carrying 42 lines to api/</div>
+    <div class="log-line"><b>[18:43]</b> soldier → <span class="ok">tests pass ✓</span></div>
+    <div class="log-line"><b>[18:43]</b> worker-03 → <span class="err">⚠ needs approval: git push</span></div>
+    <div class="log-line"><b>[18:43]</b> scout-02 → reached App.tsx</div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <h3>◆ LEGEND</h3>
+    <div class="row"><span class="dot" style="background:#c04020"></span><span>Scout — reading</span></div>
+    <div class="row"><span class="dot" style="background:#1a0a05;border:1px solid #f2d9a8"></span><span>Worker — editing</span></div>
+    <div class="row"><span class="dot" style="background:#3a3a3a"></span><span>Soldier — review / tests</span></div>
+    <div class="row"><span class="dot" style="background:#ffde5a;box-shadow:0 0 6px #ffde5a"></span><span>Cargo = diff carried</span></div>
+    <div class="row"><span class="dot" style="background:#ff8f3a;box-shadow:0 0 8px #ff8f3a"></span><span>Pulsing ring = needs input</span></div>
+    <div class="row"><span style="font-size:14px">🍂</span><span>Leaf = pending task</span></div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div class="offscreen-arrow" id="offscreenArrow">⟶</div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span><b>◉</b> compute running remote (fly.io) — your laptop draws ants only</span>
+    <a href="https://github.com/claude-colony/colony" target="_blank">★ github</a>
+    <a href="/README.md" target="_blank">docs</a>
+    <a href="/">◀ home</a>
+  </div>
+
+</div>
+
+<!-- DRAWER: agent detail -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="avatar" id="drawerAvatar" style="--acolor:#1a0a05"></div>
+    <div class="id">
+      <div class="name" id="drawerName">worker-03</div>
+      <div class="state waiting" id="drawerState">⚠ WAITING · NEEDS YOU</div>
+    </div>
+    <button class="close" onclick="closeDrawer()">✕</button>
+  </div>
+
+  <div class="drawer-tabs">
+    <button class="tab active" data-tab="chat">CHAT<span class="dot" id="chatDot"></span></button>
+    <button class="tab" data-tab="git">GIT</button>
+    <button class="tab" data-tab="deploy">DEPLOY</button>
+    <button class="tab" data-tab="tools">TOOLS</button>
+  </div>
+
+  <!-- CHAT -->
+  <div class="drawer-body" data-panel="chat" id="chatPanel">
+    <div class="chat-msg user">
+      <div class="role">▶ YOU · 18:20</div>
+      <div class="body">Refactor <code style="color:#ffde5a">src/auth/login.ts</code> to use JWT. Keep backwards-compat with session cookies for 2 weeks.</div>
+    </div>
+    <div class="chat-msg agent">
+      <div class="role">● WORKER-03 · 18:21</div>
+      <div class="body">Reading current impl + adjacent files. I'll plan before editing.</div>
+    </div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Read</span> src/auth/login.ts — 184 lines</div></div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Read</span> src/auth/session.ts — 92 lines</div></div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Grep</span> "login(" → 14 hits across 6 files</div></div>
+    <div class="chat-msg agent">
+      <div class="role">● WORKER-03 · 18:25</div>
+      <div class="body">Plan: add <code style="color:#ffde5a">issueJWT()</code> + <code style="color:#ffde5a">verifyJWT()</code> to login.ts. Keep session path as fallback. Middleware dual-reads. Implementing.</div>
+    </div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Edit</span> src/auth/login.ts &nbsp;<span style="color:#8ad06a">+28</span> <span style="color:#ff6040">−12</span></div></div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Edit</span> src/auth/middleware.ts &nbsp;<span style="color:#8ad06a">+14</span> <span style="color:#ff6040">−3</span></div></div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Write</span> tests/auth.jwt.test.ts &nbsp;<span style="color:#8ad06a">+64</span></div></div>
+    <div class="chat-msg tool"><div class="role">⚙ TOOL</div><div class="body"><span class="tname">Bash</span> pnpm test → <span style="color:#8ad06a">18 passed, 0 failed</span></div></div>
+    <div class="chat-msg agent">
+      <div class="role">● WORKER-03 · 18:39</div>
+      <div class="body">Tests pass. Committed 3 changes on branch <code style="color:#6ae0ff">wt/worker-03</code>. Ready to push — preview deploy will auto-trigger.</div>
+    </div>
+    <div class="chat-msg waiting">
+      <div class="title">⚠ NEEDS YOUR APPROVAL</div>
+      <div class="q">Push <b>3 commits</b> to <b>origin/main</b>? This triggers preview deploy to <b>preview.fly.dev</b>.</div>
+      <div class="actions">
+        <button class="approve" onclick="reply('approve')">✓ APPROVE</button>
+        <button class="deny" onclick="reply('deny')">✗ DENY</button>
+        <button class="details" onclick="switchTab('git')">◆ SEE DIFF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GIT -->
+  <div class="drawer-body git-panel" data-panel="git" style="display:none">
+    <div class="branch-line">
+      <b>⎇ wt/worker-03</b> <span class="arrow">→</span> <span class="base">main</span>
+      <span style="margin-left:auto; color:#8ad06a">3 ahead</span>
+    </div>
+    <div class="stat-row"><span>status</span><b>ready to push</b></div>
+    <div class="stat-row"><span>tests</span><b style="color:#8ad06a">✓ 18 passing</b></div>
+    <div class="stat-row"><span>lint</span><b style="color:#8ad06a">✓ clean</b></div>
+    <div class="stat-row"><span>conflicts</span><b style="color:#8ad06a">none</b></div>
+    <div class="stat-row"><span>worktree</span><b>.git/wt/worker-03</b></div>
+
+    <h4>◆ CHANGED FILES (3)</h4>
+    <div class="file-row m"><span>src/auth/login.ts</span><span><span class="plus">+28</span> <span class="minus">−12</span></span></div>
+    <div class="file-row m"><span>src/auth/middleware.ts</span><span><span class="plus">+14</span> <span class="minus">−3</span></span></div>
+    <div class="file-row a"><span>tests/auth.jwt.test.ts</span><span class="plus">+64 (new)</span></div>
+
+    <h4>◆ COMMITS (3 ahead)</h4>
+    <div class="commit-row"><span class="sha">a8c3f2</span><span class="msg">feat(auth): add JWT issue + verify</span></div>
+    <div class="commit-row"><span class="sha">e4b910</span><span class="msg">fix(middleware): dual-read jwt + session</span></div>
+    <div class="commit-row"><span class="sha">77d21e</span><span class="msg">test(auth): coverage for jwt path</span></div>
+
+    <button class="push-btn" onclick="reply('approve')">⇡ APPROVE PUSH TO MAIN</button>
+  </div>
+
+  <!-- DEPLOY -->
+  <div class="drawer-body deploy-panel" data-panel="deploy" style="display:none">
+    <div class="card">
+      <h5>◆ PREVIEW (auto on push)</h5>
+      <div class="row"><span>url</span><a href="#">preview.fly.dev</a></div>
+      <div class="row"><span>status</span><b>⧖ waiting for push</b></div>
+      <div class="row"><span>region</span><b>lhr</b></div>
+      <div class="row"><span>cold start</span><b>~8s</b></div>
+    </div>
+
+    <div class="card" style="background:rgba(106,224,255,0.06); border-color:#3a5a6a">
+      <h5 style="color:#6ae0ff">◆ PRODUCTION (last)</h5>
+      <div class="row"><span>url</span><a href="#">app.fly.dev</a></div>
+      <div class="row"><span>commit</span><b>3f2a11 (2h ago)</b></div>
+      <div class="row"><span>status</span><b style="color:#8ad06a">◉ healthy</b></div>
+      <div class="row"><span>p50</span><b>82ms</b></div>
+    </div>
+
+    <h4 style="color:#ffb870;font-family:'Silkscreen',monospace;font-size:10px;letter-spacing:0.2em;margin:16px 0 8px">◆ RECENT DEPLOY LOG</h4>
+    <div class="log-tail">[16:30] ▸ building image
+[16:31] ▸ bun install (cached)
+[16:31] ▸ vite build → 1.2mb
+[16:32] ▸ pushing to registry
+[16:33] ▸ release v182 deploying
+[16:33] ✓ health check pass
+[16:33] ✓ traffic routed
+[16:33] ◉ deploy complete</div>
+  </div>
+
+  <!-- TOOLS -->
+  <div class="drawer-body" data-panel="tools" style="display:none">
+    <div class="file-row m" style="border-left-color:#6ae0ff"><span><b style="color:#6ae0ff">Read</b> src/auth/login.ts</span><span style="color:#8a7a60">18:21</span></div>
+    <div class="file-row m" style="border-left-color:#6ae0ff"><span><b style="color:#6ae0ff">Grep</b> "login(" → 14 hits</span><span style="color:#8a7a60">18:22</span></div>
+    <div class="file-row a" style="border-left-color:#ffde5a"><span><b style="color:#ffde5a">Edit</b> login.ts +28/−12</span><span style="color:#8a7a60">18:28</span></div>
+    <div class="file-row a" style="border-left-color:#ffde5a"><span><b style="color:#ffde5a">Edit</b> middleware.ts +14/−3</span><span style="color:#8a7a60">18:32</span></div>
+    <div class="file-row a"><span><b style="color:#8ad06a">Write</b> auth.jwt.test.ts +64</span><span style="color:#8a7a60">18:34</span></div>
+    <div class="file-row m" style="border-left-color:#8ad06a"><span><b style="color:#8ad06a">Bash</b> pnpm test → ✓ 18/18</span><span style="color:#8a7a60">18:37</span></div>
+    <div class="file-row m" style="border-left-color:#8ad06a"><span><b style="color:#8ad06a">Bash</b> git commit (×3)</span><span style="color:#8a7a60">18:39</span></div>
+    <div class="file-row m" style="border-left-color:#ff8f3a"><span><b style="color:#ff8f3a">AskUser</b> push to main?</span><span style="color:#8a7a60">18:39</span></div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="drawer-input">
+    <textarea id="replyBox" placeholder="text worker-03 back... (Enter = send)"></textarea>
+    <button class="send" onclick="sendReply()">SEND ⮐</button>
+  </div>
+</div>
+
+<!-- WELCOME TOUR MODAL -->
+<div class="modal-bg" id="tourModal">
+  <div class="modal">
+    <button class="close" onclick="closeTour()">✕ CLOSE</button>
+    <h1>CLAUDE COLONY</h1>
+    <div class="sub">watch your AI agents work, without watching logs</div>
+
+    <div class="compute-box">
+      <b>◉ How it saves your laptop.</b> Colony is a thin viewer. The actual Claude agents run on a remote worker (fly.io, lambda, or your own VPS). Your browser just gets a tiny WebSocket stream of state updates to draw ants with. <b>No agent SDK on your machine. Fans stay quiet.</b>
+      <div class="flow">▸ your laptop ──(websocket state)── remote worker ──(agent sdk)── claude api</div>
+    </div>
+
+    <h2>◆ HOW TO READ THE COLONY</h2>
+
+    <div class="row-item">
+      <div class="ic">🐜</div>
+      <div><b>Ants are agents.</b> Each ant is one Claude agent. Watch it walk through your filesystem — the tunnels literally map to your repo directories.</div>
+    </div>
+    <div class="row-item">
+      <div class="ic">🎨</div>
+      <div><b>Color tells you what they do.</b> Red scouts read, black workers edit, grey soldiers run tests / review. Glowing dot on their back = code diff they're carrying.</div>
+    </div>
+    <div class="row-item">
+      <div class="ic">💬</div>
+      <div><b>Speech bubble = agent needs you.</b> You cannot miss it: big glowing bubble + pulsing orange ring around the ant + <kbd>⚠ NEEDS YOU</kbd> inbox glows red top-right + browser tab title flashes. Click bubble or inbox item to answer.</div>
+    </div>
+    <div class="row-item">
+      <div class="ic">♕</div>
+      <div><b>You are the queen.</b> Bottom center. Eggs = pending tasks waiting to be picked up. Drop a leaf on the surface = queue new work.</div>
+    </div>
+    <div class="row-item">
+      <div class="ic">✨</div>
+      <div><b>Glowing chambers = events.</b> Green = tests pass. Red = merge conflict or error. Orange pheromone trails = hot files being worked on right now.</div>
+    </div>
+
+    <div class="cta">
+      <button class="ghost" onclick="showHelp()">◆ FULL CHEATSHEET</button>
+      <button onclick="closeTour()">◆ LET ME IN</button>
+    </div>
+  </div>
+</div>
+
+<!-- HELP / CHEATSHEET MODAL -->
+<div class="modal-bg" id="helpModal" style="display:none">
+  <div class="modal">
+    <button class="close" onclick="closeHelp()">✕ CLOSE</button>
+    <h1>CHEATSHEET</h1>
+    <div class="sub">everything you can do, click, or ignore</div>
+
+    <h2>◆ HOW TO KNOW THEY NEED YOU</h2>
+    <div class="two-col">
+      <div class="row-item"><div class="ic">🔔</div><div><b>Inbox glows red</b> top-right with count badge. Click = jump to ant.</div></div>
+      <div class="row-item"><div class="ic">💬</div><div><b>Bouncy speech bubble</b> above the ant with the question.</div></div>
+      <div class="row-item"><div class="ic">🟠</div><div><b>Pulsing ring</b> around the waiting ant, orange halo.</div></div>
+      <div class="row-item"><div class="ic">📑</div><div><b>Tab title flashes</b> <code>(1) Claude Colony</code> when off-screen.</div></div>
+      <div class="row-item"><div class="ic">🖥️</div><div><b>System notification</b> (opt-in) if browser backgrounded.</div></div>
+      <div class="row-item"><div class="ic">⟶</div><div><b>Edge arrow</b> points to the ant if scrolled out of view.</div></div>
+    </div>
+
+    <h2>◆ WHY YOUR LAPTOP STAYS COOL</h2>
+    <div class="compute-box">
+      Classic "run agents locally" burns CPU, RAM, and battery. Colony runs on this model instead:
+      <div class="flow">your browser  ◂ ─ ws ─ ▸  remote worker  ◂ ─ ─ ▸  anthropic api</div>
+      <b>Local:</b> render ant sprites, draw SVG tunnels. ~2% CPU.<br>
+      <b>Remote:</b> agent SDK, filesystem ops, tool calls, git worktrees.<br>
+      You can close your laptop. Ants keep digging. Reopen → same state. Works from phone.
+    </div>
+
+    <h2>◆ INTERACTIONS</h2>
+    <div class="row-item"><div class="ic">🖱️</div><div><b>Hover ant</b> → tooltip with name, task, tokens, $.</div></div>
+    <div class="row-item"><div class="ic">🖱️</div><div><b>Click ant</b> → side panel: full conversation log, send message, kill.</div></div>
+    <div class="row-item"><div class="ic">🖱️</div><div><b>Click bubble</b> → quick-reply panel (options + freeform).</div></div>
+    <div class="row-item"><div class="ic">🖱️</div><div><b>Drag leaf</b> from surface → tunnel mouth = spawn new agent on that dir.</div></div>
+    <div class="row-item"><div class="ic">🖱️</div><div><b>Click chamber pulse</b> → event detail (test output, diff, error).</div></div>
+    <div class="row-item"><div class="ic">⌨️</div><div><kbd>?</kbd> open this sheet. <kbd>I</kbd> open inbox. <kbd>N</kbd> spawn new agent. <kbd>Esc</kbd> close.</div></div>
+
+    <h2>◆ COLOR KEY</h2>
+    <div class="row-item"><div class="ic" style="color:#c04020">●</div><div><b>Red ant</b> = scout. Reads files, gathers context. Cheap, fast.</div></div>
+    <div class="row-item"><div class="ic" style="color:#f2d9a8">●</div><div><b>Black ant</b> = worker. Writes + edits. Carries cargo (diff bytes).</div></div>
+    <div class="row-item"><div class="ic" style="color:#3a3a3a">●</div><div><b>Grey ant</b> (bigger) = soldier. Runs tests, reviews PRs, caretaker.</div></div>
+    <div class="row-item"><div class="ic">🟡</div><div><b>Yellow cargo</b> = markdown/docs.  <b>Green</b> = code.  <b>Blue</b> = data/SQL.</div></div>
+    <div class="row-item"><div class="ic">🟢</div><div><b>Green chamber pulse</b> = success (tests pass, file saved).</div></div>
+    <div class="row-item"><div class="ic">🔴</div><div><b>Red chamber pulse</b> = failure (error, conflict).</div></div>
+
+    <h2>◆ INSTALL</h2>
+    <div class="compute-box">
+      <code>bunx claude-colony</code> &nbsp; → spins up locally with remote-compute-by-default.<br>
+      <code>bunx claude-colony --local</code> &nbsp; → run agents on your machine anyway.<br>
+      <code>fly launch</code> &nbsp; → deploy your own worker. MIT. Fork it.
+    </div>
+
+    <div class="cta">
+      <button onclick="closeHelp()">◆ GOT IT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const svg = document.getElementById('tunnelsSvg');
+  const antsLayer = document.getElementById('ants');
+  const bubblesLayer = document.getElementById('bubbles');
+  const tooltip = document.getElementById('tooltip');
+
+  const VB_W = 1600, VB_H = 900;
+  function svgToScreen(x, y) {
+    const rect = svg.getBoundingClientRect();
+    return {
+      x: (x / VB_W) * rect.width,
+      y: (y / VB_H) * rect.height + rect.top
+    };
+  }
+
+  const ants = [
+    { name: 'scout-01',   pathId: 'p_src',   speed: 0.00018, offset: 0,    color: '#c04020', cargo: null, state: 'busy',   task: 'reading src/auth/login.ts', tokens: 12340, cost: 0.08 },
+    { name: 'worker-02',  pathId: 'p_api',   speed: 0.00012, offset: 0.3,  color: '#1a0a05', cargo: '#ffde5a', state: 'busy', task: 'editing api/routes.ts',   tokens: 28910, cost: 0.41 },
+    { name: 'worker-03',  pathId: 'p_utils', speed: 0,       offset: 0.45, color: '#1a0a05', cargo: '#8ad06a', state: 'waiting', task: 'waiting on git push approval', tokens: 18050, cost: 0.22, question: 'git push to main?' },
+    { name: 'soldier-01', pathId: 'p_tests', speed: 0.00010, offset: 0.5,  color: '#3a3a3a', cargo: null, state: 'busy',   task: 'running auth.test',       tokens: 9420, cost: 0.05, soldier: true },
+    { name: 'scout-02',   pathId: 'p_ui',    speed: 0.00020, offset: 0.7,  color: '#c04020', cargo: null, state: 'busy',   task: 'reading App.tsx',         tokens: 15500, cost: 0.11 },
+    { name: 'worker-04',  pathId: 'p_db',    speed: 0.00013, offset: 0.2,  color: '#1a0a05', cargo: '#6ae0ff', state: 'busy', task: 'migrations',            tokens: 6220, cost: 0.03 },
+  ];
+
+  ants.forEach((a) => {
+    const el = document.createElement('div');
+    el.className = 'ant' + (a.state === 'waiting' ? ' waiting' : '') + (a.soldier ? ' soldier' : '');
+    el.style.setProperty('--c', a.color);
+    el.innerHTML = `
+      <div class="legs"></div>
+      <div class="body"></div>
+      ${a.cargo ? `<div class="cargo" style="--cargo:${a.cargo}"></div>` : ''}
+    `;
+    el.addEventListener('mouseenter', (e) => showTip(a, e));
+    el.addEventListener('mousemove', moveTip);
+    el.addEventListener('mouseleave', hideTip);
+    el.addEventListener('click', () => openDrawer(a));
+    antsLayer.appendChild(el);
+    a.el = el;
+    a.path = document.getElementById(a.pathId);
+    a.len = a.path.getTotalLength();
+    a.t = a.offset;
+    a.dir = 1;
+
+    if (a.state === 'waiting' && a.question) {
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.innerHTML = `<span class="q">?</span> ${a.question}<span class="hint">click to answer</span>`;
+      b.addEventListener('click', () => openDrawer(a));
+      bubblesLayer.appendChild(b);
+      a.bubble = b;
+    }
+  });
+
+  function showTip(a, e) {
+    tooltip.innerHTML = `
+      <h4>◆ ${a.name.toUpperCase()}</h4>
+      <div class="row"><span>state</span><b>${a.state}${a.soldier ? ' (soldier)' : ''}</b></div>
+      <div class="row"><span>task</span><b>${a.task}</b></div>
+      <div class="row"><span>tokens</span><b>${a.tokens.toLocaleString()}</b></div>
+      <div class="row"><span>cost</span><b>$${a.cost.toFixed(2)}</b></div>
+      <div class="hint">click ant to open</div>
+    `;
+    tooltip.style.display = 'block';
+    moveTip(e);
+  }
+  function moveTip(e) {
+    const pad = 14;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+    if (x + w > innerWidth) x = e.clientX - w - pad;
+    if (y + h > innerHeight) y = e.clientY - h - pad;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+  function hideTip() { tooltip.style.display = 'none'; }
+
+  const drawer = document.getElementById('drawer');
+  function openDrawer(a) {
+    document.getElementById('drawerName').textContent = a.name;
+    document.getElementById('drawerAvatar').style.setProperty('--acolor', a.color);
+    const st = document.getElementById('drawerState');
+    if (a.state === 'waiting') {
+      st.textContent = '⚠ WAITING · NEEDS YOU';
+      st.className = 'state waiting';
+      switchTab('chat');
+    } else {
+      st.textContent = '◉ BUSY · ' + (a.task || '').toUpperCase();
+      st.className = 'state';
+    }
+    drawer.classList.add('open');
+  }
+  function closeDrawer() { drawer.classList.remove('open'); }
+
+  function switchTab(name) {
+    document.querySelectorAll('.drawer-tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('[data-panel]').forEach(p => p.style.display = p.dataset.panel === name ? 'block' : 'none');
+  }
+  document.querySelectorAll('.drawer-tabs .tab').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  function reply(kind) {
+    const chat = document.getElementById('chatPanel');
+    const waitingBox = chat.querySelector('.chat-msg.waiting');
+    if (waitingBox) waitingBox.remove();
+    const dot = document.getElementById('chatDot');
+    if (dot) dot.style.display = 'none';
+
+    const msg = document.createElement('div');
+    msg.className = 'chat-msg user';
+    msg.innerHTML = `<div class="role">▶ YOU · now</div><div class="body">${kind === 'approve' ? '✓ Approved — push to main' : '✗ Denied — hold the push'}</div>`;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+
+    setTimeout(() => {
+      const r = document.createElement('div');
+      r.className = 'chat-msg agent';
+      r.innerHTML = kind === 'approve'
+        ? `<div class="role">● WORKER-03 · now</div><div class="body">Pushing... ✓ 3 commits to <code style="color:#6ae0ff">origin/main</code>. Preview deploy triggered — <a style="color:#6ae0ff" href="#">preview.fly.dev</a>. I'll watch the health check and ping you if anything goes sideways.</div>`
+        : `<div class="role">● WORKER-03 · now</div><div class="body">Understood — holding the push. What should change first?</div>`;
+      chat.appendChild(r);
+      chat.scrollTop = chat.scrollHeight;
+
+      // clear waiting state in town
+      const w = ants.find(a => a.name === 'worker-03');
+      if (w) {
+        w.state = 'busy'; w.speed = 0.00014;
+        w.el.classList.remove('waiting');
+        if (w.bubble) { w.bubble.remove(); w.bubble = null; }
+      }
+      const st = document.getElementById('drawerState');
+      st.textContent = '◉ BUSY · RESUMED';
+      st.className = 'state';
+      const inbox = document.getElementById('inboxPanel'); if (inbox) inbox.style.display = 'none';
+      const badge = document.getElementById('inboxBadge'); if (badge) badge.style.display = 'none';
+    }, 600);
+  }
+
+  function sendReply() {
+    const t = document.getElementById('replyBox');
+    const v = t.value.trim();
+    if (!v) return;
+    t.value = '';
+    const chat = document.getElementById('chatPanel');
+    const msg = document.createElement('div');
+    msg.className = 'chat-msg user';
+    msg.innerHTML = `<div class="role">▶ YOU · now</div><div class="body">${v.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>`;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+    setTimeout(() => {
+      const r = document.createElement('div');
+      r.className = 'chat-msg agent';
+      r.innerHTML = `<div class="role">● WORKER-03 · now</div><div class="body">Got it. On it — I'll report back with a diff.</div>`;
+      chat.appendChild(r);
+      chat.scrollTop = chat.scrollHeight;
+    }, 500);
+  }
+  document.getElementById('replyBox').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); }
+  });
+
+  window.openDrawer = openDrawer; window.closeDrawer = closeDrawer;
+  window.switchTab = switchTab; window.reply = reply; window.sendReply = sendReply;
+
+  // legacy
+  function answerQuestion() {
+    const w = ants.find(a => a.name === 'worker-03');
+    if (w) openDrawer(w);
+  }
+
+  // Animation loop
+  let last = performance.now();
+  function tick(now) {
+    const dt = now - last; last = now;
+    ants.forEach(a => {
+      if (a.state !== 'waiting') {
+        a.t += a.speed * a.dir * dt;
+        if (a.t >= 1) { a.t = 1; a.dir = -1; }
+        if (a.t <= 0) { a.t = 0; a.dir = 1; }
+      }
+
+      const pt = a.path.getPointAtLength(a.t * a.len);
+      const pt2 = a.path.getPointAtLength(Math.min(a.len, a.t * a.len + 2));
+      const angle = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
+      const screen = svgToScreen(pt.x, pt.y);
+
+      a.el.style.transform = `translate(${screen.x - 9}px, ${screen.y - 5}px) rotate(${angle * (a.dir === -1 && a.state !== 'waiting' ? -1 : 1)}deg)` + (a.soldier ? ' scale(1.3)' : '');
+
+      if (a.bubble) {
+        a.bubble.style.left = (screen.x + 8) + 'px';
+        a.bubble.style.top  = (screen.y - 54) + 'px';
+      }
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  window.addEventListener('resize', () => ants.forEach(a => { a.len = a.path.getTotalLength(); }));
+
+  // Modals
+  const tourModal = document.getElementById('tourModal');
+  const helpModal = document.getElementById('helpModal');
+  if (localStorage.getItem('colony.tourSeen') === '1') {
+    tourModal.style.display = 'none';
+  }
+  function closeTour() {
+    tourModal.style.display = 'none';
+    localStorage.setItem('colony.tourSeen', '1');
+  }
+  function showHelp() {
+    tourModal.style.display = 'none';
+    helpModal.style.display = 'flex';
+    localStorage.setItem('colony.tourSeen', '1');
+  }
+  function closeHelp() { helpModal.style.display = 'none'; }
+  window.closeTour = closeTour; window.showHelp = showHelp; window.closeHelp = closeHelp;
+
+  document.getElementById('btnHelp').addEventListener('click', showHelp);
+  document.getElementById('btnTour').addEventListener('click', () => tourModal.style.display = 'flex');
+  document.getElementById('btnInbox').addEventListener('click', answerQuestion);
+  document.getElementById('inboxItem1').addEventListener('click', answerQuestion);
+  document.getElementById('footerHelp').addEventListener('click', (e) => { e.preventDefault(); showHelp(); });
+
+  // Keybinds
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeTour(); closeHelp(); closeDrawer(); }
+    if (e.key === '?') showHelp();
+    if (e.key === 'i' || e.key === 'I') answerQuestion();
+  });
+
+  // Tab title flash when alerts present + tab hidden
+  let titleFlash;
+  function startTitleFlash() {
+    if (titleFlash) return;
+    let toggle = false;
+    titleFlash = setInterval(() => {
+      document.title = (toggle = !toggle) ? '(1) ⚠ Claude Colony' : 'Claude Colony';
+    }, 700);
+  }
+  function stopTitleFlash() {
+    clearInterval(titleFlash); titleFlash = null;
+    document.title = 'Claude Colony';
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) startTitleFlash(); else stopTitleFlash();
+  });
+</script>
+</body>
+</html>

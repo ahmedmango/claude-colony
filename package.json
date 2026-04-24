@@ -1,0 +1,53 @@
+{
+  "name": "claude-colony",
+  "version": "0.1.0",
+  "description": "Watch your Claude agents work — a pixel-art ant colony for the Claude Agent SDK. Remote-compute by default.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/claude-colony/colony"
+  },
+  "keywords": [
+    "claude",
+    "anthropic",
+    "agent",
+    "sdk",
+    "claude-code",
+    "ant-colony",
+    "orchestrator",
+    "pixel-art",
+    "opensource"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "bin": {
+    "claude-colony": "bin/colony.mjs"
+  },
+  "files": [
+    "bin/",
+    "server/",
+    "public/",
+    "README.md",
+    "ARCHITECTURE.md",
+    "AUTH.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "bun run server/index.ts",
+    "mocks": "bun scripts/serve-mocks.ts",
+    "build": "bun run scripts/build.ts",
+    "start": "NODE_ENV=production bun server/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "chokidar": "^5.0.0",
+    "hono": "^4.12.15",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  }
+}

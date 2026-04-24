@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Colony — Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0d0805; font-family: 'IBM Plex Mono', monospace; color: #f2d9a8; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+
+  /* =================== TOP BAR =================== */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 46px;
+    background: rgba(10, 4, 0, 0.94);
+    border-bottom: 1px solid #5a3a20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    z-index: 30;
+    backdrop-filter: blur(6px);
+    font-family: 'Silkscreen', monospace;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .logo {
+    width: 22px; height: 22px;
+    background: radial-gradient(#ffb870, #c06030);
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ffb87088;
+  }
+  .brand .name { color: #ffb870; font-size: 13px; letter-spacing: 0.2em; }
+  .conn { font-size: 10px; letter-spacing: 0.14em; display: flex; align-items: center; gap: 6px; }
+  .conn .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .conn .dot.ok { background: #8ad06a; box-shadow: 0 0 6px #8ad06a; }
+  .conn .dot.bad { background: #ff4020; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  /* compact inline HUD stats */
+  .stats { display: flex; gap: 16px; font-size: 10px; letter-spacing: 0.14em; color: #8a7a60; }
+  .stats .stat { display: flex; gap: 6px; }
+  .stats .stat b { color: #ffde5a; font-weight: 400; }
+  .stats .stat.busy b  { color: #8ad06a; }
+  .stats .stat.error b { color: #ff6040; }
+  .stats .stat .k { color: #8a7a60; }
+
+  .nav { display: flex; gap: 6px; }
+  .nav a, .nav button {
+    color: #f2d9a8; background: transparent;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.14em;
+    text-decoration: none; padding: 6px 10px;
+    border: 1px solid #5a3a20; border-radius: 2px;
+    cursor: pointer;
+  }
+  .nav a:hover, .nav button:hover { background: #2a1605; border-color: #ffb870; color: #ffb870; }
+  .nav .toggle.on { background: #2a1605; border-color: #ffb870; color: #ffb870; }
+  .nav .spawn { background: #ffb870; color: #0a0400; border-color: #ffb870; }
+  .nav .spawn:hover { background: #ffde5a; color: #0a0400; }
+
+  /* =================== SCENE =================== */
+  .sky {
+    position: absolute; top: 46px; left: 0; right: 0; height: 16%;
+    background: linear-gradient(#1a0a22 0%, #3a1a45 45%, #8a3a4a 85%, #b86040 100%);
+  }
+  .grass {
+    position: absolute; left: 0; right: 0;
+    top: calc(16% + 42px); height: 2.5%;
+    background: linear-gradient(#2f4a22, #1f3018);
+  }
+  .soil {
+    position: absolute; left: 0; right: 0; top: calc(18.5% + 42px); bottom: 0;
+    background: linear-gradient(#3a2008 0%, #2a1605 40%, #1a0a05 100%);
+  }
+
+  /* =================== TREES =================== */
+  .project-tree {
+    position: absolute;
+    width: 10px; height: 46px;
+    background: #2a1605;
+    z-index: 3;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .project-tree:hover { transform: scale(1.08); }
+  .project-tree .foliage {
+    position: absolute;
+    bottom: 34px; left: -38px;
+    width: 86px;
+    height: calc(50px + var(--grow, 0px));
+    background: radial-gradient(ellipse, var(--foliage, #2a4525) 58%, transparent 60%);
+    pointer-events: none;
+    transition: all 0.8s ease-out;
+  }
+  .project-tree.unhealthy .foliage {
+    background: radial-gradient(ellipse, #6a2a1a 60%, transparent 62%);
+    filter: drop-shadow(0 0 8px #ff4020aa);
+  }
+  .project-tree .label {
+    position: absolute;
+    top: -26px; left: 50%; transform: translateX(-50%);
+    color: #f2d9a8; font-size: 10px; white-space: nowrap;
+    font-family: 'Silkscreen', monospace;
+    letter-spacing: 0.1em;
+    background: rgba(10, 4, 0, 0.9);
+    padding: 3px 7px;
+    border-radius: 2px;
+    border: 1px solid #5a3a20;
+  }
+  .project-tree .count {
+    position: absolute;
+    top: 6px; left: 50%; transform: translateX(-50%);
+    background: #ffde5a; color: #0a0400;
+    font-family: 'Silkscreen', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    border: 1px solid #0a0400;
+  }
+  .project-tree:hover .label { background: #ffb870; color: #0a0400; border-color: #ffb870; }
+
+  /* =================== TUNNELS (straight vertical) =================== */
+  .tunnels { position: absolute; inset: 46px 0 40px 0; width: 100%; pointer-events: none; }
+
+  /* =================== ANTS =================== */
+  .ant { position: absolute; width: 22px; height: 12px; z-index: 5; transform-origin: center; cursor: pointer; pointer-events: auto; }
+  .ant .body::before {
+    content: '';
+    position: absolute; left: 2px; top: 2px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, #1a0a05);
+    box-shadow: 9px 0 0 var(--c, #1a0a05), 18px 0 0 var(--c, #1a0a05);
+  }
+  .ant .legs { position: absolute; left: 0; right: 0; top: -3px; height: 18px; }
+  .ant .legs::before, .ant .legs::after {
+    content: '';
+    position: absolute; left: 5px; width: 14px; height: 1px;
+    background: var(--c, #1a0a05);
+  }
+  .ant .legs::before { top: 0;  transform: rotate(-22deg); animation: scurry 0.2s infinite alternate; }
+  .ant .legs::after  { bottom: 0; transform: rotate(22deg); animation: scurry 0.2s infinite alternate reverse; }
+  .ant.idle .legs::before, .ant.idle .legs::after { animation: none; }
+  @keyframes scurry {
+    0% { transform: rotate(-22deg) scaleX(1); }
+    100% { transform: rotate(-30deg) scaleX(0.85); }
+  }
+  .ant .antennae { position: absolute; top: -4px; left: 15px; width: 8px; height: 6px; pointer-events: none; }
+  .ant .antennae::before, .ant .antennae::after {
+    content: '';
+    position: absolute; width: 7px; height: 1px;
+    background: var(--c, #1a0a05);
+    transform-origin: left center;
+  }
+  .ant .antennae::before { top: 0; transform: rotate(-18deg); animation: antenna 0.6s infinite alternate; }
+  .ant .antennae::after  { top: 3px; transform: rotate(18deg); animation: antenna 0.6s infinite alternate reverse; }
+  @keyframes antenna {
+    0% { transform: rotate(-18deg); }
+    100% { transform: rotate(-30deg); }
+  }
+  .ant .cargo {
+    position: absolute; top: -6px; left: 9px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cargo, #ffde5a);
+    box-shadow: 0 0 8px var(--cargo, #ffde5a);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .ant.busy .cargo { opacity: 1; }
+  .ant.working .body { animation: chew 0.3s ease-in-out infinite alternate; }
+  @keyframes chew { 0% { transform: translateY(0); } 100% { transform: translateY(-1px) scale(1.05, 0.95); } }
+  .ant.working .legs::before, .ant.working .legs::after { animation-duration: 0.08s !important; }
+
+  .ant.error { filter: drop-shadow(0 0 10px #ff4020); }
+  .ant.error::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: -6px; right: -6px; bottom: -10px;
+    border-radius: 50%;
+    border: 2px solid #ff4020;
+    animation: errRing 0.8s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes errRing {
+    0%   { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  .dust {
+    position: fixed;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #c8a870;
+    opacity: 0.8;
+    pointer-events: none; z-index: 6;
+    animation: dustRise 0.9s ease-out forwards;
+  }
+  @keyframes dustRise {
+    0%   { transform: translate(0,0) scale(1);     opacity: 0.9; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+
+  .hatch-egg {
+    position: fixed;
+    width: 14px; height: 18px;
+    background: radial-gradient(ellipse at 40% 40%, #fff8c8, #e8b870);
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ffde5a;
+    pointer-events: none; z-index: 45;
+    transform: translate(-50%, -50%);
+    animation: eggWiggle 1.2s ease-in-out infinite;
+  }
+  @keyframes eggWiggle {
+    0%,100% { transform: translate(-50%,-50%) rotate(-6deg); }
+    50%     { transform: translate(-50%,-50%) rotate(6deg); }
+  }
+  .hatch-egg.crack { animation: eggCrack 0.9s ease-out forwards; }
+  @keyframes eggCrack {
+    0%   { transform: translate(-50%,-50%) scale(1); }
+    30%  { transform: translate(-50%,-50%) scale(1.4); filter: brightness(1.8); }
+    100% { transform: translate(-50%,-50%) scale(0) rotate(180deg); opacity: 0; }
+  }
+
+  /* =================== QUEEN STRIP (bottom) =================== */
+  .queen-strip {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 40px;
+    background: linear-gradient(to top, rgba(10,4,0,0.9), rgba(10,4,0,0.3));
+    border-top: 1px solid #5a3a20;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    z-index: 10;
+  }
+  .queen-strip .q {
+    display: flex; align-items: center; gap: 8px;
+    color: #ffde5a;
+  }
+  .queen-strip .q::before {
+    content: '♕';
+    font-size: 16px;
+    color: #ffde5a;
+    text-shadow: 0 0 8px #ff885044;
+  }
+  .queen-strip .hint { color: #8a7a60; }
+  .queen-strip kbd {
+    background: #2a1605; border: 1px solid #5a3a20;
+    padding: 1px 5px; border-radius: 2px;
+    color: #ffde5a; font-size: 9px;
+  }
+
+  /* =================== EMPTY STATE =================== */
+  .empty {
+    position: absolute; inset: 46px 0 40px 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    text-align: center;
+    color: #8a7a60;
+    padding: 40px;
+    z-index: 4;
+    pointer-events: none;
+  }
+  .empty h2 { color: #ffb870; font-family: 'Silkscreen', monospace; font-size: 18px; letter-spacing: 0.2em; }
+  .empty p { font-size: 13px; max-width: 500px; line-height: 1.6; }
+  .empty code { color: #8ad06a; background: #0a0400; padding: 2px 7px; border-radius: 2px; font-family: 'IBM Plex Mono', monospace; }
+  .empty .cta { margin-top: 10px; color: #ffb870; font-family: 'Silkscreen', monospace; letter-spacing: 0.15em; }
+  .empty .cta kbd { background: #ffb870; color: #0a0400; padding: 3px 8px; border-radius: 2px; font-size: 11px; }
+
+  /* =================== TOOLTIP =================== */
+  #tooltip {
+    position: fixed;
+    background: #0a0400;
+    border: 1px solid #ffb870;
+    padding: 8px 12px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    color: #f2d9a8;
+    z-index: 50;
+    pointer-events: none;
+    display: none;
+    min-width: 200px;
+    box-shadow: 0 0 14px #ffb87055;
+  }
+  #tooltip h4 { color: #ffb870; margin-bottom: 4px; font-size: 10px; }
+  #tooltip .row { display: flex; justify-content: space-between; gap: 10px; margin: 2px 0; }
+  #tooltip .row b { color: #ffde5a; }
+  #tooltip .hint { color: #8a7a60; margin-top: 4px; font-size: 9px; }
+
+  /* =================== DRAWER =================== */
+  .drawer {
+    position: fixed;
+    top: 46px; right: 0; bottom: 0;
+    width: 480px; max-width: 94vw;
+    background: #120905;
+    border-left: 2px solid #5a3a20;
+    z-index: 40;
+    transform: translateX(102%);
+    transition: transform 0.3s cubic-bezier(.2,.7,.3,1);
+    display: flex; flex-direction: column;
+    color: #f2d9a8;
+    box-shadow: -10px 0 40px rgba(0,0,0,0.7);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid #5a3a20;
+    background: rgba(255,184,112,0.04);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .drawer-head .info { flex: 1; min-width: 0; }
+  .drawer-head .name { color: #ffb870; font-family: 'Silkscreen', monospace; letter-spacing: 0.14em; font-size: 12px; word-break: break-all; }
+  .drawer-head .state { font-family: 'Silkscreen', monospace; font-size: 10px; margin-top: 4px; letter-spacing: 0.15em; }
+  .drawer-head .state.busy { color: #8ad06a; }
+  .drawer-head .state.idle { color: #8a7a60; }
+  .drawer-head .state.error { color: #ff6040; }
+  .drawer-head .proj { color: #6ae0ff; font-size: 11px; margin-top: 4px; word-break: break-all; }
+  .drawer-head .close {
+    background: transparent; border: 1px solid #5a3a20; color: #f2d9a8;
+    width: 30px; height: 30px;
+    cursor: pointer; border-radius: 2px;
+  }
+  .drawer-head .close:hover { background: #ff4020; color: #fff; border-color: #ff4020; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 14px 18px; font-size: 12px; line-height: 1.55; }
+  .drawer-stat {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255, 184, 112, 0.04);
+    border: 1px solid #3a2010;
+    border-radius: 3px;
+    margin-bottom: 14px;
+  }
+  .drawer-stat .s { display: flex; flex-direction: column; }
+  .drawer-stat .s .k { color: #8a7a60; font-family: 'Silkscreen', monospace; font-size: 9px; letter-spacing: 0.15em; }
+  .drawer-stat .s .v { color: #ffde5a; font-size: 14px; margin-top: 2px; }
+  .event-row {
+    padding: 6px 0 6px 10px;
+    border-left: 2px solid #5a3a20;
+    margin: 4px 0;
+    font-size: 11px;
+    color: #d4b88a;
+    line-height: 1.4;
+  }
+  .event-row.tool_use    { border-color: #6ae0ff; }
+  .event-row.tool_result { border-color: #8ad06a; }
+  .event-row.user        { border-color: #8ad06a; background: rgba(138,208,106,0.05); padding: 6px 10px; }
+  .event-row.assistant   { border-color: #ffb870; background: rgba(255,184,112,0.05); padding: 6px 10px; }
+  .event-row.error       { border-color: #ff6040; color: #ff9a7a; }
+  .event-row.thinking    { color: #8a7a60; font-style: italic; }
+  .event-row .ts { color: #8a7a60; font-family: 'Silkscreen', monospace; font-size: 9px; margin-right: 6px; }
+  .event-row .tag { color: #6ae0ff; font-family: 'Silkscreen', monospace; font-size: 9px; margin-right: 6px; }
+
+  /* =================== SPAWN MODAL =================== */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.78);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: #1a0a05;
+    border: 2px solid #ffb870;
+    width: 640px; max-width: 92vw; max-height: 90vh;
+    padding: 26px 32px;
+    color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace;
+    border-radius: 8px;
+    box-shadow: 0 0 80px #ff885066;
+    overflow-y: auto;
+    position: relative;
+  }
+  .modal h1 {
+    font-family: 'Silkscreen', monospace;
+    color: #ffb870;
+    font-size: 20px;
+    letter-spacing: 0.2em;
+    margin-bottom: 6px;
+  }
+  .modal .sub {
+    color: #8a7a60; font-size: 11px; letter-spacing: 0.15em; margin-bottom: 22px;
+    font-family: 'Silkscreen', monospace;
+  }
+  .modal .close {
+    position: absolute; top: 14px; right: 16px;
+    background: transparent; border: 1px solid #5a3a20; color: #f2d9a8;
+    font-family: 'Silkscreen', monospace; font-size: 11px;
+    padding: 4px 10px; cursor: pointer; border-radius: 2px;
+  }
+  .modal .close:hover { background: #ff4020; color: #fff; border-color: #ff4020; }
+  .modal .field { margin-bottom: 14px; }
+  .modal .lbl {
+    display: block; font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.18em; color: #ffb870; margin-bottom: 6px;
+  }
+  .modal select, .modal textarea, .modal input {
+    width: 100%;
+    background: #0a0400; border: 1px solid #5a3a20; color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px; padding: 10px 12px; border-radius: 3px;
+  }
+  .modal select:focus, .modal textarea:focus, .modal input:focus { outline: none; border-color: #ffb870; }
+  .modal textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+  .modal .skill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .modal .skill-card {
+    padding: 10px 12px; background: #0a0400; border: 1px solid #3a2010;
+    border-radius: 3px; cursor: pointer; transition: all 0.15s;
+  }
+  .modal .skill-card:hover { border-color: #ffb870; }
+  .modal .skill-card.sel {
+    background: rgba(255,184,112,0.1); border-color: #ffb870;
+    box-shadow: 0 0 14px rgba(255,184,112,0.3);
+  }
+  .modal .skill-card .emoji { font-size: 20px; }
+  .modal .skill-card .name {
+    font-family: 'Silkscreen', monospace; font-size: 11px;
+    letter-spacing: 0.14em; color: #ffde5a; margin: 4px 0 2px;
+  }
+  .modal .skill-card .desc { font-size: 10px; color: #a8a090; line-height: 1.3; }
+  .modal .provider-row { display: flex; gap: 8px; }
+  .modal .provider-btn {
+    flex: 1; padding: 10px 8px;
+    background: #0a0400; border: 1px solid #3a2010; color: #f2d9a8;
+    font-family: 'Silkscreen', monospace; font-size: 10px;
+    letter-spacing: 0.15em; border-radius: 3px; cursor: pointer;
+    text-align: center; position: relative;
+  }
+  .modal .provider-btn.sel { background: rgba(138,208,106,0.1); border-color: #8ad06a; color: #8ad06a; }
+  .modal .provider-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .modal .provider-btn:disabled::after {
+    content: 'v0.2'; position: absolute;
+    top: 2px; right: 4px; font-size: 7px; color: #8a7a60;
+  }
+  .modal .cta { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+  .modal .cta button {
+    padding: 12px 22px; font-family: 'Silkscreen', monospace;
+    font-size: 11px; letter-spacing: 0.2em;
+    cursor: pointer; border-radius: 3px; border: 1px solid #5a3a20;
+  }
+  .modal .cta .ghost { background: transparent; color: #f2d9a8; }
+  .modal .cta .ghost:hover { border-color: #ffb870; color: #ffb870; }
+  .modal .cta .primary { background: #ffb870; color: #0a0400; border-color: #ffb870; }
+  .modal .cta .primary:hover { background: #ffde5a; }
+  .modal .cta .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal .status {
+    padding: 10px 14px; margin-top: 10px;
+    background: #0a0400; border: 1px solid #3a2010;
+    border-radius: 3px; font-size: 11px; color: #a8a090;
+    display: none;
+  }
+  .modal .status.show { display: block; }
+  .modal .status.ok { color: #8ad06a; border-color: #8ad06a; }
+  .modal .status.err { color: #ff6040; border-color: #ff6040; }
+
+  /* Log drawer (optional bottom panel — toggled) */
+  .logpanel {
+    position: absolute;
+    right: 16px; bottom: 52px;
+    width: 380px; max-height: 180px;
+    background: rgba(10, 4, 0, 0.9);
+    border: 1px solid #5a3a20;
+    padding: 8px 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #a8a090;
+    border-radius: 4px;
+    overflow-y: auto;
+    z-index: 20;
+    display: none;
+  }
+  .logpanel.show { display: block; }
+  .logpanel h3 { color: #ffb870; font-family: 'Silkscreen', monospace; font-size: 9px; letter-spacing: 0.2em; margin-bottom: 6px; }
+  .logpanel .log-line { margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .logpanel .log-line b { color: #ffde5a; }
+  .logpanel .log-line .tool { color: #6ae0ff; }
+  .logpanel .log-line .ok { color: #8ad06a; }
+  .logpanel .log-line .err { color: #ff6a4a; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="logo"></div>
+    <span class="name">CLAUDE COLONY</span>
+    <span class="conn" id="conn" style="margin-left:10px"><span class="dot bad"></span><span id="connText">connecting</span></span>
+  </div>
+
+  <div class="stats">
+    <div class="stat busy"><span class="k">BUSY</span><b id="s_busy">0</b></div>
+    <div class="stat"><span class="k">IDLE</span><b id="s_idle">0</b></div>
+    <div class="stat error"><span class="k">ERR</span><b id="s_err">0</b></div>
+    <div class="stat"><span class="k">PROJECTS</span><b id="s_proj">0</b></div>
+    <div class="stat"><span class="k">TOKENS</span><b id="s_tok">0</b></div>
+    <div class="stat"><span class="k">COST</span><b id="s_cost">$0</b></div>
+  </div>
+
+  <div class="nav">
+    <button class="toggle" id="btnAll" title="Show all sessions (not just recent)">● 2H</button>
+    <button class="toggle" id="btnLog" title="Toggle live log (L)">◆ LOG</button>
+    <a href="/">◀ HOME</a>
+    <button class="spawn" id="btnSpawn">◆ SPAWN +</button>
+  </div>
+</div>
+
+<div id="stage">
+  <div class="sky"></div>
+  <div class="grass"></div>
+  <div class="soil"></div>
+
+  <svg class="tunnels" id="svg" viewBox="0 0 1600 900" preserveAspectRatio="none">
+    <g id="tunnelPaths"></g>
+    <g id="chambers"></g>
+  </svg>
+
+  <div id="trees"></div>
+  <div id="ants"></div>
+
+  <div class="empty" id="empty">
+    <h2>◆ QUIET COLONY</h2>
+    <p>
+      No sessions active in the last 2 hours. Start a <code>claude</code> session anywhere,
+      or press <kbd style="color:#ffb870">SPAWN +</kbd> to hatch one here.
+    </p>
+    <div class="cta">◆ press <kbd>N</kbd> to spawn</div>
+  </div>
+
+  <div class="queen-strip">
+    <div class="q">QUEEN <span id="q_count">(0)</span></div>
+    <span class="hint"><kbd>N</kbd> spawn · <kbd>L</kbd> log · <kbd>A</kbd> toggle archive · <kbd>Esc</kbd> close</span>
+  </div>
+
+  <div class="logpanel" id="logpanel">
+    <h3>◆ LIVE LOG</h3>
+    <div id="logView"></div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <!-- Drawer -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div class="info">
+        <div class="name" id="d_name">—</div>
+        <div class="state idle" id="d_state">—</div>
+        <div class="proj" id="d_proj">—</div>
+      </div>
+      <button class="close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-stat">
+        <div class="s"><span class="k">TOKENS IN</span><span class="v" id="d_tin">0</span></div>
+        <div class="s"><span class="k">TOKENS OUT</span><span class="v" id="d_tout">0</span></div>
+        <div class="s"><span class="k">COST</span><span class="v" id="d_cost">$0.00</span></div>
+        <div class="s"><span class="k">EVENTS</span><span class="v" id="d_events">0</span></div>
+        <div class="s"><span class="k">MODEL</span><span class="v" id="d_model" style="font-size:11px">—</span></div>
+        <div class="s"><span class="k">STATUS</span><span class="v" id="d_status2" style="font-size:11px">—</span></div>
+      </div>
+      <div id="d_events_list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SPAWN MODAL -->
+<div class="modal-bg" id="spawnModal">
+  <div class="modal">
+    <button class="close" onclick="closeSpawn()">✕</button>
+    <h1>◆ QUEEN COMMANDS</h1>
+    <div class="sub">spawn a new ant — project · skill · model · task</div>
+
+    <div class="field">
+      <label class="lbl">◆ PROJECT (cwd)</label>
+      <select id="sp_project"></select>
+    </div>
+
+    <div class="field">
+      <label class="lbl">◆ SKILL</label>
+      <div class="skill-grid" id="sp_skills"></div>
+    </div>
+
+    <div class="field">
+      <label class="lbl">◆ PROVIDER</label>
+      <div class="provider-row" id="sp_providers"></div>
+    </div>
+
+    <div class="field">
+      <label class="lbl">◆ MODEL</label>
+      <select id="sp_model"></select>
+    </div>
+
+    <div class="field">
+      <label class="lbl">◆ TASK</label>
+      <textarea id="sp_prompt" placeholder="tell the ant what to build, fix, or investigate..."></textarea>
+    </div>
+
+    <div class="status" id="sp_status"></div>
+
+    <div class="cta">
+      <button class="ghost" onclick="closeSpawn()">CANCEL</button>
+      <button class="primary" id="sp_go" onclick="doSpawn()">◆ HATCH ANT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// CLAUDE COLONY — LIVE CLIENT v2 (minimalist)
+// Straight tunnels, one per active project, 2h activity filter by default.
+// ============================================================================
+
+const VB_W = 1600, VB_H = 900;
+const svg = document.getElementById('svg');
+const antsLayer = document.getElementById('ants');
+const treesLayer = document.getElementById('trees');
+const tunnelPaths = document.getElementById('tunnelPaths');
+const chambers = document.getElementById('chambers');
+const connDot = document.querySelector('#conn .dot');
+const connText = document.getElementById('connText');
+const tooltip = document.getElementById('tooltip');
+const drawer = document.getElementById('drawer');
+const logView = document.getElementById('logView');
+const logpanel = document.getElementById('logpanel');
+const emptyEl = document.getElementById('empty');
+
+// Config
+let SHOW_ALL = false;
+const TWO_HOURS = 2 * 60 * 60 * 1000;
+
+function shouldShow(session) {
+  if (SHOW_ALL) return true;
+  if (session.status === 'busy' || session.status === 'error') return true;
+  if (!session.lastEventTs) return false;
+  return (Date.now() - session.lastEventTs) < TWO_HOURS;
+}
+
+function svgToScreen(x, y) {
+  const rect = svg.getBoundingClientRect();
+  return { x: (x / VB_W) * rect.width, y: (y / VB_H) * rect.height + rect.top };
+}
+
+// ============================================================================
+// PROJECTS / TREES / TUNNELS (straight vertical)
+// ============================================================================
+const projects = new Map();
+const ants = new Map();
+
+function colorForProject(key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) & 0xffff;
+  return `hsl(${h % 360}, 50%, 28%)`;
+}
+
+function relayoutProjects() {
+  const visible = Array.from(projects.values()).filter(p => p.visible);
+  const n = visible.length;
+  if (n === 0) return;
+  const pad = 100;
+  const usable = VB_W - pad * 2;
+  visible.forEach((p, i) => {
+    const x = pad + (usable * (i + 0.5)) / n;
+    p.x = x;
+    // path: straight vertical from y=160 to y=820
+    const d = `M ${x} 160 L ${x} 820`;
+    p.path.setAttribute('d', d);
+    p.chamber.setAttribute('cx', x);
+    // tree position in CSS coords
+    if (p.tree) {
+      p.tree.style.left = `calc(${(x / VB_W) * 100}% - 5px)`;
+    }
+    p.pathLen = p.path.getTotalLength();
+    // rebind ant path length
+    for (const a of ants.values()) {
+      if (a.session.projectPath === p.projectPath) {
+        a.pathLen = p.pathLen;
+      }
+    }
+  });
+}
+
+function ensureProject(projectPath, label) {
+  if (projects.has(projectPath)) return projects.get(projectPath);
+  // Create tunnel path (placeholder d, will be laid out)
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', 'M 0 160 L 0 820');
+  p.setAttribute('stroke', '#1a0800');
+  p.setAttribute('stroke-width', '16');
+  p.setAttribute('fill', 'none');
+  p.setAttribute('stroke-linecap', 'round');
+  tunnelPaths.appendChild(p);
+
+  // Chamber marker at bottom of tunnel (pulses on event)
+  const cm = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  cm.setAttribute('cx', 0); cm.setAttribute('cy', 820);
+  cm.setAttribute('r', 0); cm.setAttribute('opacity', 0);
+  cm.setAttribute('fill', '#8ad06a');
+  chambers.appendChild(cm);
+
+  // Tree (above ground)
+  const tree = document.createElement('div');
+  tree.className = 'project-tree';
+  const short = label.length > 22 ? '…' + label.slice(-20) : label;
+  tree.innerHTML = `
+    <div class="foliage" style="--foliage: ${colorForProject(projectPath)}"></div>
+    <div class="label">${escapeHTML(short)}</div>
+    <div class="count">0</div>
+  `;
+  tree.style.top = 'calc(16% + 42px - 46px)';  // tree base sits at grass level
+  tree.addEventListener('mouseenter', (e) => showProjectTip(projectPath, e));
+  tree.addEventListener('mousemove', moveTip);
+  tree.addEventListener('mouseleave', hideTip);
+  treesLayer.appendChild(tree);
+
+  const rec = {
+    projectPath, label, path: p, chamber: cm, tree,
+    pathLen: p.getTotalLength(),
+    sessions: 0, totalEvents: 0, errors: 0,
+    visible: true,
+  };
+  projects.set(projectPath, rec);
+  return rec;
+}
+
+function setProjectVisible(projectPath, visible) {
+  const p = projects.get(projectPath);
+  if (!p) return;
+  if (p.visible === visible) return;
+  p.visible = visible;
+  p.path.style.display = visible ? '' : 'none';
+  p.chamber.style.display = visible ? '' : 'none';
+  p.tree.style.display = visible ? '' : 'none';
+  relayoutProjects();
+}
+
+function bumpProjectHealth(projectPath, { isError }) {
+  const p = projects.get(projectPath);
+  if (!p) return;
+  p.totalEvents += 1;
+  if (isError) p.errors += 1;
+  const grow = Math.min(50, p.totalEvents * 0.5);
+  const errRate = p.totalEvents > 0 ? p.errors / p.totalEvents : 0;
+  if (p.tree) {
+    const foliage = p.tree.querySelector('.foliage');
+    if (foliage) foliage.style.setProperty('--grow', grow + 'px');
+    if (errRate > 0.05) p.tree.classList.add('unhealthy');
+    else p.tree.classList.remove('unhealthy');
+  }
+}
+
+function updateProjectCount(projectPath) {
+  const p = projects.get(projectPath);
+  if (!p || !p.tree) return;
+  let n = 0;
+  for (const a of ants.values()) {
+    if (a.session.projectPath === projectPath && a.visible) n++;
+  }
+  p.sessions = n;
+  const badge = p.tree.querySelector('.count');
+  if (badge) badge.textContent = n;
+  setProjectVisible(projectPath, n > 0);
+}
+
+// ============================================================================
+// ANTS
+// ============================================================================
+function colorForStatus(s) {
+  if (s === 'error') return '#ff4020';
+  if (s === 'busy')  return '#1a0a05';
+  return '#5a4030';
+}
+function cargoColor(session) { return cargoColorForTool(session.lastToolName) ?? '#ffde5a'; }
+function cargoColorForTool(t) {
+  if (!t) return null;
+  if (/read|grep|glob/i.test(t))       return '#6ae0ff';
+  if (/edit|write|multiedit/i.test(t)) return '#ffde5a';
+  if (/bash|run/i.test(t))             return '#8ad06a';
+  if (/web/i.test(t))                  return '#c080ff';
+  return '#ffde5a';
+}
+function speedForStatus(s) {
+  if (s === 'busy')  return 0.00015;
+  if (s === 'error') return 0.00006;
+  return 0;
+}
+
+function spawnAnt(session, opts = {}) {
+  const proj = ensureProject(session.projectPath, session.projectLabel);
+  const el = document.createElement('div');
+  el.className = 'ant ' + session.status;
+  el.dataset.session = session.id;
+  el.style.setProperty('--c', colorForStatus(session.status));
+  el.style.setProperty('--cargo', cargoColor(session));
+  el.innerHTML = `<div class="antennae"></div><div class="legs"></div><div class="body"></div><div class="cargo"></div>`;
+  el.addEventListener('mouseenter', (e) => showAntTip(session, e));
+  el.addEventListener('mousemove', moveTip);
+  el.addEventListener('mouseleave', hideTip);
+  el.addEventListener('click', () => openDrawer(session));
+  antsLayer.appendChild(el);
+
+  const a = {
+    session, el,
+    path: proj.path, pathLen: proj.pathLen,
+    t: Math.random() * 0.9 + 0.05,
+    dir: Math.random() < 0.5 ? 1 : -1,
+    speed: speedForStatus(session.status),
+    workUntil: 0,
+    visible: shouldShow(session),
+  };
+  ants.set(session.id, a);
+
+  if (!a.visible) el.style.display = 'none';
+  if (opts.hatch) hatchEgg(proj, a);
+
+  updateProjectCount(session.projectPath);
+  relayoutProjects();
+  return a;
+}
+
+function updateAnt(session) {
+  let a = ants.get(session.id);
+  if (!a) return spawnAnt(session);
+  a.session = session;
+  a.speed = speedForStatus(session.status);
+  a.el.className = 'ant ' + session.status;
+  a.el.style.setProperty('--c', colorForStatus(session.status));
+  a.el.style.setProperty('--cargo', cargoColor(session));
+  const wasVisible = a.visible;
+  a.visible = shouldShow(session);
+  if (wasVisible !== a.visible) {
+    a.el.style.display = a.visible ? '' : 'none';
+    updateProjectCount(session.projectPath);
+    relayoutProjects();
+  }
+}
+
+function beginWork(ant, duration = 1600) {
+  ant.workUntil = performance.now() + duration;
+  emitDust(ant);
+}
+function emitDust(ant) {
+  const rect = ant.el.getBoundingClientRect();
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('div');
+    d.className = 'dust';
+    d.style.left = (rect.left + rect.width/2 + (Math.random()-0.5)*10) + 'px';
+    d.style.top  = (rect.top  + rect.height/2 + (Math.random()-0.5)*6) + 'px';
+    d.style.setProperty('--dx', ((Math.random()-0.5) * 28) + 'px');
+    d.style.setProperty('--dy', (-Math.random()*16 - 4) + 'px');
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 900);
+  }
+}
+function hatchEgg(proj, ant) {
+  const qc = document.querySelector('.queen-strip');
+  if (!qc) return;
+  const qr = qc.getBoundingClientRect();
+  const egg = document.createElement('div');
+  egg.className = 'hatch-egg';
+  egg.style.left = (qr.left + qr.width/2) + 'px';
+  egg.style.top  = (qr.top - 10) + 'px';
+  document.body.appendChild(egg);
+  setTimeout(() => {
+    egg.classList.add('crack');
+    setTimeout(() => egg.remove(), 900);
+  }, 1200);
+  ant.t = 0; ant.dir = 1;
+}
+
+// ============================================================================
+// ANIMATION LOOP
+// ============================================================================
+let last = performance.now();
+function tick(now) {
+  const dt = now - last; last = now;
+  for (const a of ants.values()) {
+    if (!a.visible) continue;
+    const paused = now < a.workUntil;
+    const eff = paused ? 0 : a.speed;
+    if (eff > 0) {
+      a.t += eff * a.dir * dt;
+      if (a.t >= 1) { a.t = 1; a.dir = -1; }
+      if (a.t <= 0) { a.t = 0; a.dir = 1; }
+    }
+    try {
+      const pt  = a.path.getPointAtLength(a.t * a.pathLen);
+      const pt2 = a.path.getPointAtLength(Math.min(a.pathLen, a.t * a.pathLen + 2));
+      const angle = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
+      const s = svgToScreen(pt.x, pt.y);
+      const jitter = paused ? `translate(${(Math.random()-0.5)*1}px, ${(Math.random()-0.5)*1}px)` : '';
+      a.el.style.transform = `translate(${s.x - 11}px, ${s.y - 6}px) ${jitter} rotate(${angle * (a.dir === -1 ? -1 : 1)}deg)`;
+      a.el.classList.toggle('working', paused);
+    } catch {}
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// ============================================================================
+// HUD + STATUS STRIP
+// ============================================================================
+function refreshStats() {
+  let busy = 0, idle = 0, err = 0, tok = 0, cost = 0, projs = 0;
+  for (const a of ants.values()) {
+    if (!a.visible) continue;
+    if (a.session.status === 'busy')  busy++;
+    else if (a.session.status === 'error') err++;
+    else idle++;
+    tok  += (a.session.tokensIn || 0) + (a.session.tokensOut || 0);
+    cost += a.session.costUsd || 0;
+  }
+  for (const p of projects.values()) if (p.visible) projs++;
+  document.getElementById('s_busy').textContent = busy;
+  document.getElementById('s_idle').textContent = idle;
+  document.getElementById('s_err').textContent  = err;
+  document.getElementById('s_proj').textContent = projs;
+  document.getElementById('s_tok').textContent  = fmt(tok);
+  document.getElementById('s_cost').textContent = '$' + cost.toFixed(2);
+  document.getElementById('q_count').textContent = `(${busy + idle + err})`;
+  emptyEl.style.display = (busy + idle + err) === 0 ? 'flex' : 'none';
+}
+function fmt(n) {
+  if (n > 1_000_000) return (n/1_000_000).toFixed(2) + 'M';
+  if (n > 1_000) return (n/1_000).toFixed(1) + 'K';
+  return String(n);
+}
+
+// ============================================================================
+// LOG
+// ============================================================================
+const LOG_MAX = 20;
+function pushLog({ session, event }) {
+  const row = document.createElement('div');
+  row.className = 'log-line';
+  const time = new Date(event.ts).toLocaleTimeString('en-GB').slice(0, 5);
+  const short = session.projectLabel.length > 18 ? '…' + session.projectLabel.slice(-16) : session.projectLabel;
+  let body = '';
+  if (event.kind === 'tool_use') body = `<span class="tool">${event.toolName || 'tool'}</span> ${(event.text || '').slice(0, 50)}`;
+  else if (event.kind === 'tool_result') body = `<span class="ok">→ ok</span>`;
+  else if (event.kind === 'error') body = `<span class="err">⚠ ${(event.text || 'error').slice(0, 50)}</span>`;
+  else if (event.kind === 'user') body = `▶ ${(event.text || '').slice(0, 60)}`;
+  else if (event.kind === 'assistant') body = `● ${(event.text || '').slice(0, 60)}`;
+  else body = event.kind;
+  row.innerHTML = `<b>[${time}]</b> ${short} ${body}`;
+  logView.insertBefore(row, logView.firstChild);
+  while (logView.children.length > LOG_MAX) logView.lastChild.remove();
+}
+
+// ============================================================================
+// TOOLTIP + DRAWER
+// ============================================================================
+function showAntTip(session, e) {
+  const skill = skillInferred(session);
+  tooltip.innerHTML = `
+    <h4>◆ ${session.id.slice(0,8)}</h4>
+    <div class="row"><span>project</span><b>${escapeHTML(session.projectLabel)}</b></div>
+    <div class="row"><span>status</span><b style="color:${colorForStatus(session.status)}">${session.status}</b></div>
+    <div class="row"><span>last</span><b>${escapeHTML(session.lastToolName || session.lastEventKind)}</b></div>
+    <div class="row"><span>tokens</span><b>${fmt((session.tokensIn||0)+(session.tokensOut||0))}</b></div>
+    <div class="row"><span>cost</span><b>$${(session.costUsd||0).toFixed(2)}</b></div>
+    <div class="hint">click for chat + events</div>
+  `;
+  tooltip.style.display = 'block'; moveTip(e);
+}
+function showProjectTip(projectPath, e) {
+  const p = projects.get(projectPath);
+  if (!p) return;
+  const errRate = p.totalEvents > 0 ? ((p.errors / p.totalEvents) * 100).toFixed(1) : '0.0';
+  let sessionCount = 0, totalTokens = 0, totalCost = 0;
+  for (const a of ants.values()) {
+    if (a.session.projectPath === projectPath && a.visible) {
+      sessionCount++;
+      totalTokens += (a.session.tokensIn||0) + (a.session.tokensOut||0);
+      totalCost   += a.session.costUsd||0;
+    }
+  }
+  const healthy = parseFloat(errRate) <= 5.0;
+  tooltip.innerHTML = `
+    <h4>◆ ${escapeHTML(p.label)}</h4>
+    <div class="row"><span>health</span><b style="color:${healthy?'#8ad06a':'#ff6040'}">${healthy?'healthy':'degraded'}</b></div>
+    <div class="row"><span>ants</span><b>${sessionCount}</b></div>
+    <div class="row"><span>events</span><b>${p.totalEvents}</b></div>
+    <div class="row"><span>errors</span><b>${p.errors} (${errRate}%)</b></div>
+    <div class="row"><span>tokens</span><b>${fmt(totalTokens)}</b></div>
+    <div class="row"><span>cost</span><b>$${totalCost.toFixed(2)}</b></div>
+  `;
+  tooltip.style.display = 'block'; moveTip(e);
+}
+function moveTip(e) {
+  const pad = 14;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  const w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+  if (x + w > innerWidth) x = e.clientX - w - pad;
+  if (y + h > innerHeight) y = e.clientY - h - pad;
+  tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
+}
+function hideTip() { tooltip.style.display = 'none'; }
+function escapeHTML(s) { return (s || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function skillInferred(session) {
+  // heuristic for display
+  const t = session.lastToolName || '';
+  if (/edit|write/i.test(t)) return 'worker';
+  if (/read|grep|glob/i.test(t)) return 'scout';
+  return 'worker';
+}
+
+let openSessionId = null;
+function openDrawer(session) {
+  openSessionId = session.id;
+  document.getElementById('d_name').textContent  = session.id;
+  document.getElementById('d_proj').textContent  = session.projectLabel + ' · ' + (session.model || '');
+  refreshDrawer(session);
+  document.getElementById('d_events_list').innerHTML =
+    '<div class="event-row"><span class="tag">INFO</span> new events stream here as the session works. keep open while you work in your terminal.</div>';
+  drawer.classList.add('open');
+}
+function refreshDrawer(session) {
+  document.getElementById('d_tin').textContent   = fmt(session.tokensIn || 0);
+  document.getElementById('d_tout').textContent  = fmt(session.tokensOut || 0);
+  document.getElementById('d_cost').textContent  = '$' + (session.costUsd || 0).toFixed(2);
+  document.getElementById('d_events').textContent = session.eventCount || 0;
+  document.getElementById('d_model').textContent  = session.model || '—';
+  const st = document.getElementById('d_state');
+  st.textContent = '◉ ' + session.status.toUpperCase();
+  st.className = 'state ' + session.status;
+  document.getElementById('d_status2').textContent = session.status;
+}
+function closeDrawer() { drawer.classList.remove('open'); openSessionId = null; }
+window.closeDrawer = closeDrawer;
+
+function pushEventToDrawer(session, event) {
+  if (openSessionId !== session.id) return;
+  const row = document.createElement('div');
+  row.className = 'event-row ' + event.kind;
+  const time = new Date(event.ts).toLocaleTimeString('en-GB');
+  let body;
+  if (event.kind === 'tool_use')   body = `<b style="color:#6ae0ff">${event.toolName || 'tool'}</b> — ${escapeHTML(event.text || '')}`;
+  else if (event.kind === 'tool_result') body = `<span style="color:#8ad06a">✓ result</span>`;
+  else if (event.kind === 'error') body = `<span style="color:#ff6040">⚠ ${escapeHTML(event.text || 'error')}</span>`;
+  else body = escapeHTML(event.text || event.kind);
+  row.innerHTML = `<span class="ts">${time}</span><span class="tag">${event.kind.toUpperCase()}</span>${body}`;
+  const list = document.getElementById('d_events_list');
+  list.insertBefore(row, list.firstChild);
+  while (list.children.length > 80) list.lastChild.remove();
+}
+
+// ============================================================================
+// WEBSOCKET
+// ============================================================================
+let ws;
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onopen  = () => { connDot.className = 'dot ok';  connText.textContent = 'live'; };
+  ws.onclose = () => { connDot.className = 'dot bad'; connText.textContent = 'reconnecting'; setTimeout(connectWS, 1500); };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.event === 'hello') {
+      for (const s of msg.data.sessions) spawnAnt(s);
+      refreshStats();
+    } else if (msg.event === 'session.update') {
+      if (!ants.has(msg.data.id) && msg.data.reason === 'created') {
+        spawnAnt(msg.data, { hatch: true });
+      } else {
+        updateAnt(msg.data);
+      }
+      if (openSessionId === msg.data.id) refreshDrawer(msg.data);
+      refreshStats();
+    } else if (msg.event === 'session.event') {
+      const a = ants.get(msg.data.sessionId);
+      if (!a) return;
+      if (a.visible) pushLog({ session: a.session, event: msg.data });
+      pushEventToDrawer(a.session, msg.data);
+      bumpProjectHealth(a.session.projectPath, { isError: !!msg.data.isError });
+      if (msg.data.kind === 'tool_use') beginWork(a, 1600);
+      const cc = cargoColorForTool(msg.data.toolName);
+      if (cc) a.el.style.setProperty('--cargo', cc);
+      const proj = projects.get(a.session.projectPath);
+      if (msg.data.kind === 'tool_result' && !msg.data.isError) flashChamber(proj, '#8ad06a');
+      if (msg.data.isError || msg.data.kind === 'error') flashChamber(proj, '#ff4020');
+    } else if (msg.event === 'conflict') {
+      handleConflict(msg.data);
+    }
+  };
+}
+connectWS();
+
+function flashChamber(proj, color) {
+  if (!proj?.chamber) return;
+  const c = proj.chamber;
+  c.setAttribute('fill', color);
+  c.setAttribute('r', 4);
+  c.setAttribute('opacity', 1);
+  c.style.transition = 'all 1.6s';
+  requestAnimationFrame(() => { c.setAttribute('r', 18); c.setAttribute('opacity', 0); });
+}
+function handleConflict(conflict) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed; top:60px; left:50%; transform:translateX(-50%);
+    background:rgba(255,64,32,0.95); color:#fff; padding:14px 22px; border-radius:6px;
+    font-family:'Silkscreen',monospace; font-size:12px; letter-spacing:0.15em;
+    z-index:60; box-shadow:0 0 30px #ff4020cc; border:2px solid #fff;`;
+  const short = conflict.filePath.length > 50 ? '…' + conflict.filePath.slice(-48) : conflict.filePath;
+  t.innerHTML = `⚠ CONFLICT — ${conflict.sessions.length} ants on ${escapeHTML(short)}`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
+// ============================================================================
+// TOGGLES + KEYBOARD
+// ============================================================================
+const btnAll = document.getElementById('btnAll');
+btnAll.addEventListener('click', () => {
+  SHOW_ALL = !SHOW_ALL;
+  btnAll.classList.toggle('on', SHOW_ALL);
+  btnAll.textContent = SHOW_ALL ? '◉ ALL' : '● 2H';
+  // re-evaluate visibility for every ant
+  for (const a of ants.values()) {
+    const was = a.visible;
+    a.visible = shouldShow(a.session);
+    if (was !== a.visible) {
+      a.el.style.display = a.visible ? '' : 'none';
+      updateProjectCount(a.session.projectPath);
+    }
+  }
+  relayoutProjects();
+  refreshStats();
+});
+
+const btnLog = document.getElementById('btnLog');
+btnLog.addEventListener('click', () => {
+  logpanel.classList.toggle('show');
+  btnLog.classList.toggle('on', logpanel.classList.contains('show'));
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input,textarea,select')) return;
+  if (e.key === 'Escape') { closeDrawer(); closeSpawn(); }
+  if (e.key === 'n' || e.key === 'N') openSpawn();
+  if (e.key === 'l' || e.key === 'L') btnLog.click();
+  if (e.key === 'a' || e.key === 'A') btnAll.click();
+});
+
+window.addEventListener('resize', () => {
+  for (const p of projects.values()) p.pathLen = p.path.getTotalLength();
+  for (const a of ants.values()) a.pathLen = a.path.getTotalLength();
+  relayoutProjects();
+});
+setInterval(refreshStats, 2000);
+
+// ============================================================================
+// SPAWN MODAL
+// ============================================================================
+const spawnModal = document.getElementById('spawnModal');
+let spawnData = { skills: [], projects: [], providers: [] };
+let pickedSkill = 'worker';
+let pickedProvider = 'claude';
+const DEFAULT_MODELS = {
+  claude: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  openai: ['gpt-5', 'gpt-5-mini', 'o3'],
+  gemini: ['gemini-2.5-pro', 'gemini-2.5-flash'],
+  ollama: ['llama3.2', 'qwen2.5-coder', 'deepseek-r1'],
+};
+
+async function openSpawn() {
+  spawnModal.classList.add('show');
+  document.getElementById('sp_status').className = 'status';
+  document.getElementById('sp_status').textContent = '';
+  if (spawnData.skills.length === 0) await hydrateSpawn();
+}
+function closeSpawn() { spawnModal.classList.remove('show'); }
+window.closeSpawn = closeSpawn;
+window.openSpawn = openSpawn;
+
+async function hydrateSpawn() {
+  const [sk, pr, pv] = await Promise.all([
+    fetch('/api/skills').then(r => r.json()),
+    fetch('/api/projects').then(r => r.json()),
+    fetch('/api/providers').then(r => r.json()),
+  ]);
+  spawnData.skills = sk.skills;
+  spawnData.projects = pr.projects;
+  spawnData.providers = pv.providers;
+
+  const selP = document.getElementById('sp_project');
+  selP.innerHTML = spawnData.projects.length
+    ? spawnData.projects.map(p =>
+        `<option value="${escapeHTML(p.path)}">${escapeHTML(p.label)}${p.hasClaudeMd ? '  ★' : ''}</option>`
+      ).join('')
+    : '<option value="">No git repos found in ~/code, ~/projects, ~/Desktop</option>';
+
+  const sg = document.getElementById('sp_skills');
+  sg.innerHTML = spawnData.skills.map(s => `
+    <div class="skill-card" data-skill="${s.name}" onclick="pickSkill('${s.name}')">
+      <div class="emoji">${s.emoji}</div>
+      <div class="name">${s.name.toUpperCase()}</div>
+      <div class="desc">${escapeHTML(s.description)}</div>
+    </div>`).join('');
+  pickSkill('worker');
+
+  const pg = document.getElementById('sp_providers');
+  pg.innerHTML = spawnData.providers.map(p => `
+    <button class="provider-btn ${p.provider === 'claude' ? 'sel' : ''}"
+            data-provider="${p.provider}"
+            ${p.ok ? '' : 'disabled title="' + escapeHTML(p.reason || '') + '"'}
+            onclick="pickProvider('${p.provider}')">${p.provider.toUpperCase()}</button>
+  `).join('');
+  pickProvider('claude');
+}
+
+function pickSkill(name) {
+  pickedSkill = name;
+  document.querySelectorAll('.skill-card').forEach(el => el.classList.toggle('sel', el.dataset.skill === name));
+}
+function pickProvider(name) {
+  pickedProvider = name;
+  document.querySelectorAll('.provider-btn').forEach(el => el.classList.toggle('sel', el.dataset.provider === name));
+  const selM = document.getElementById('sp_model');
+  selM.innerHTML = DEFAULT_MODELS[name].map(m => `<option value="${m}">${m}</option>`).join('');
+}
+window.pickSkill = pickSkill;
+window.pickProvider = pickProvider;
+
+async function doSpawn() {
+  const projectPath = document.getElementById('sp_project').value;
+  const prompt = document.getElementById('sp_prompt').value.trim();
+  const skill = pickedSkill;
+  const model = document.getElementById('sp_model').value;
+  const provider = pickedProvider;
+  const status = document.getElementById('sp_status');
+  if (!projectPath) { status.className='status show err'; status.textContent='✗ pick a project'; return; }
+  if (!prompt)     { status.className='status show err'; status.textContent='✗ task is empty'; return; }
+  const go = document.getElementById('sp_go');
+  go.disabled = true;
+  status.className = 'status show';
+  status.textContent = '◆ hatching ' + skill + ' on ' + projectPath + ' ...';
+  try {
+    const r = await fetch('/api/spawn', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projectPath, prompt, skill, provider, model }),
+    });
+    const d = await r.json();
+    if (!r.ok) { status.className='status show err'; status.textContent='✗ ' + (d.error || 'spawn failed'); go.disabled=false; return; }
+    status.className='status show ok';
+    status.textContent = '✓ hatched ' + skill + ' pid=' + d.spawn.pid + ' — ant coming soon';
+    setTimeout(() => { closeSpawn(); go.disabled = false; }, 1500);
+  } catch (err) {
+    status.className='status show err'; status.textContent='✗ ' + err; go.disabled = false;
+  }
+}
+window.doSpawn = doSpawn;
+
+document.getElementById('btnSpawn').addEventListener('click', (e) => { e.preventDefault(); openSpawn(); });
+</script>
+</body>
+</html>

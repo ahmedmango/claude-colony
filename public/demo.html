@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Colony — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #050300; font-family: 'IBM Plex Mono', monospace; color: #f2d9a8; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+
+  /* =================== TOP BAR =================== */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 46px;
+    background: rgba(10, 4, 0, 0.94);
+    border-bottom: 1px solid #5a3a20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    z-index: 30;
+    font-family: 'Silkscreen', monospace;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 22px; height: 22px;
+    background: radial-gradient(#ffb870, #c06030);
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ffb87088;
+  }
+  .name { color: #ffb870; font-size: 13px; letter-spacing: 0.2em; }
+  .tag { color: #8a7a60; font-size: 10px; letter-spacing: 0.15em; margin-left: 4px; }
+  .nav a {
+    color: #f2d9a8; font-size: 10px; letter-spacing: 0.14em;
+    text-decoration: none; padding: 6px 10px;
+    border: 1px solid #5a3a20; border-radius: 2px;
+    margin-left: 6px;
+    font-family: 'Silkscreen', monospace;
+  }
+  .nav a.primary { background: #ffb870; color: #0a0400; border-color: #ffb870; }
+  .nav a:hover { background: #2a1605; border-color: #ffb870; color: #ffb870; }
+
+  /* =================== SCENE =================== */
+  .sky {
+    position: absolute; top: 46px; left: 0; right: 0; height: 22%;
+    background: linear-gradient(#0a0514 0%, #1e0a30 35%, #4e1a3a 70%, #a84030 95%, #d86a30 100%);
+    opacity: 0;
+    transition: opacity 1.2s ease-out;
+  }
+  .sky.show { opacity: 1; }
+  .sky::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 30% 50%, #fff8, transparent),
+      radial-gradient(1px 1px at 55% 25%, #fff, transparent),
+      radial-gradient(1px 1px at 75% 45%, #fffa, transparent),
+      radial-gradient(1px 1px at 88% 20%, #fff, transparent),
+      radial-gradient(1px 1px at 20% 70%, #fff8, transparent),
+      radial-gradient(1.5px 1.5px at 45% 80%, #fff, transparent);
+    opacity: 0.6;
+  }
+  .sun {
+    position: absolute; top: 18%; right: 10%;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(#ffdca0, #ff8040);
+    box-shadow: 0 0 40px #ffb870aa, 0 0 80px #ff884088;
+    opacity: 0;
+    transition: opacity 1.2s ease-out;
+  }
+  .sun.show { opacity: 1; }
+
+  .grass {
+    position: absolute; left: 0; right: 0;
+    top: calc(22% + 42px); height: 2.5%;
+    background: linear-gradient(#2f4a22, #1f3018);
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  .grass.show { opacity: 1; }
+  .soil {
+    position: absolute; left: 0; right: 0; top: calc(24.5% + 42px); bottom: 0;
+    background: linear-gradient(#3a2008 0%, #2a1605 40%, #1a0a05 100%);
+  }
+
+  /* =================== PROJECT TREES =================== */
+  .project-tree {
+    position: absolute;
+    width: 10px;
+    background: #2a1605;
+    z-index: 3;
+    height: 0;
+    transition: height 0.9s ease-out, opacity 0.6s;
+    opacity: 0;
+    transform: translateX(-50%);
+  }
+  .project-tree.grow {
+    opacity: 1;
+    height: 46px;
+  }
+  .project-tree .foliage {
+    position: absolute;
+    bottom: 34px; left: -40px;
+    width: 90px;
+    height: calc(54px + var(--grow, 0px));
+    background: radial-gradient(ellipse, var(--foliage, #2a4525) 58%, transparent 60%);
+    transform: scale(0);
+    transform-origin: bottom center;
+    transition: transform 0.7s cubic-bezier(.3,1.6,.4,1), background 0.5s;
+    pointer-events: none;
+  }
+  .project-tree.grow .foliage { transform: scale(1); transition-delay: 0.4s; }
+  .project-tree.unhealthy .foliage {
+    background: radial-gradient(ellipse, #6a2a1a 60%, transparent 62%);
+    filter: drop-shadow(0 0 8px #ff4020aa);
+  }
+  .project-tree .label {
+    position: absolute;
+    top: -26px; left: 50%; transform: translateX(-50%);
+    color: #f2d9a8; font-size: 10px; white-space: nowrap;
+    font-family: 'Silkscreen', monospace;
+    letter-spacing: 0.1em;
+    background: rgba(10, 4, 0, 0.9);
+    padding: 3px 7px;
+    border-radius: 2px;
+    border: 1px solid #5a3a20;
+    opacity: 0;
+    transition: opacity 0.4s 0.9s;
+  }
+  .project-tree.grow .label { opacity: 1; }
+
+  /* =================== TUNNELS (svg) =================== */
+  .tunnels { position: absolute; inset: 46px 0 40px 0; width: 100%; pointer-events: none; }
+  .tunnels path.tunnel {
+    stroke: #1a0800;
+    stroke-width: 16;
+    fill: none;
+    stroke-linecap: round;
+    /* Dig animation: stroke revealed progressively */
+  }
+
+  /* =================== ANTS =================== */
+  .ant { position: absolute; width: 22px; height: 12px; z-index: 5; transform-origin: center; opacity: 0; transition: opacity 0.4s; }
+  .ant.alive { opacity: 1; }
+  .ant .body::before {
+    content: '';
+    position: absolute; left: 2px; top: 2px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, #1a0a05);
+    box-shadow: 9px 0 0 var(--c, #1a0a05), 18px 0 0 var(--c, #1a0a05);
+  }
+  .ant .legs { position: absolute; left: 0; right: 0; top: -3px; height: 18px; }
+  .ant .legs::before, .ant .legs::after {
+    content: '';
+    position: absolute; left: 5px; width: 14px; height: 1px;
+    background: var(--c, #1a0a05);
+  }
+  .ant .legs::before { top: 0; transform: rotate(-22deg); animation: scurry 0.2s infinite alternate; }
+  .ant .legs::after  { bottom: 0; transform: rotate(22deg); animation: scurry 0.2s infinite alternate reverse; }
+  @keyframes scurry {
+    0%   { transform: rotate(-22deg) scaleX(1); }
+    100% { transform: rotate(-30deg) scaleX(0.85); }
+  }
+  .ant .antennae { position: absolute; top: -4px; left: 15px; width: 8px; height: 6px; pointer-events: none; }
+  .ant .antennae::before, .ant .antennae::after {
+    content: ''; position: absolute; width: 7px; height: 1px;
+    background: var(--c, #1a0a05);
+    transform-origin: left center;
+  }
+  .ant .antennae::before { top: 0; transform: rotate(-18deg); animation: antenna 0.6s infinite alternate; }
+  .ant .antennae::after  { top: 3px; transform: rotate(18deg); animation: antenna 0.6s infinite alternate reverse; }
+  @keyframes antenna {
+    0% { transform: rotate(-18deg); }
+    100% { transform: rotate(-30deg); }
+  }
+  .ant .cargo {
+    position: absolute; top: -6px; left: 9px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cargo, #ffde5a);
+    box-shadow: 0 0 8px var(--cargo, #ffde5a);
+    opacity: 0;
+    transition: opacity 0.3s, background 0.4s;
+  }
+  .ant.carry .cargo { opacity: 1; }
+  .ant.working .body { animation: chew 0.3s ease-in-out infinite alternate; }
+  @keyframes chew {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-1px) scale(1.05, 0.95); }
+  }
+  .ant.working .legs::before, .ant.working .legs::after { animation-duration: 0.08s !important; }
+  .ant.waiting { filter: drop-shadow(0 0 10px #ff8f3a); }
+  .ant.waiting::before {
+    content: '';
+    position: absolute;
+    top: -14px; left: -10px; right: -10px; bottom: -14px;
+    border-radius: 50%;
+    border: 2px solid #ff8f3a;
+    animation: waitingRing 1.1s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes waitingRing {
+    0%   { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+
+  .dust {
+    position: fixed;
+    width: 3px; height: 3px; border-radius: 50%;
+    background: #c8a870;
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: 6;
+    animation: dustRise 0.9s ease-out forwards;
+  }
+  @keyframes dustRise {
+    0%   { transform: translate(0,0) scale(1); opacity: 0.9; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+
+  /* Egg hatch */
+  .hatch-egg {
+    position: fixed;
+    width: 14px; height: 18px;
+    background: radial-gradient(ellipse at 40% 40%, #fff8c8, #e8b870);
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ffde5a;
+    pointer-events: none;
+    z-index: 45;
+    transform: translate(-50%, -50%);
+    animation: eggWiggle 1.2s ease-in-out infinite;
+  }
+  @keyframes eggWiggle {
+    0%,100% { transform: translate(-50%,-50%) rotate(-6deg); }
+    50%     { transform: translate(-50%,-50%) rotate(6deg); }
+  }
+  .hatch-egg.crack { animation: eggCrack 0.8s ease-out forwards; }
+  @keyframes eggCrack {
+    0%   { transform: translate(-50%,-50%) scale(1); }
+    30%  { transform: translate(-50%,-50%) scale(1.4); filter: brightness(1.6); }
+    100% { transform: translate(-50%,-50%) scale(0) rotate(180deg); opacity: 0; }
+  }
+
+  /* =================== QUEEN STRIP =================== */
+  .queen-strip {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 40px;
+    background: linear-gradient(to top, rgba(10,4,0,0.9), rgba(10,4,0,0.3));
+    border-top: 1px solid #5a3a20;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    font-family: 'Silkscreen', monospace; font-size: 10px;
+    letter-spacing: 0.18em;
+    z-index: 10;
+  }
+  .queen-strip .q { display: flex; align-items: center; gap: 8px; color: #ffde5a; }
+  .queen-strip .q::before {
+    content: '♕'; font-size: 16px; color: #ffde5a;
+    text-shadow: 0 0 8px #ff885044;
+  }
+  .queen-strip .hint { color: #8a7a60; }
+
+  /* =================== NEEDS-YOU INBOX =================== */
+  .inbox {
+    position: absolute; top: 62px; right: 16px;
+    width: 220px;
+    background: rgba(10, 4, 0, 0.92);
+    border: 2px solid #5a3a20;
+    padding: 10px 12px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; color: #8a7a60;
+    border-radius: 4px;
+    z-index: 20;
+    opacity: 0.6;
+    transition: all 0.4s;
+  }
+  .inbox.alert {
+    border-color: #ff6040;
+    color: #ff6040;
+    box-shadow: 0 0 32px #ff604066;
+    opacity: 1;
+    animation: inboxGlow 1.2s ease-in-out infinite;
+  }
+  @keyframes inboxGlow {
+    0%,100% { box-shadow: 0 0 22px #ff604055; }
+    50%     { box-shadow: 0 0 40px #ff6040aa; }
+  }
+  .inbox h3 { display: flex; justify-content: space-between; }
+  .inbox .count {
+    background: #5a3a20; color: #8a7a60;
+    padding: 2px 6px; border-radius: 8px; font-size: 9px;
+    transition: all 0.3s;
+  }
+  .inbox.alert .count { background: #ff4020; color: #fff; }
+  .inbox .item {
+    margin-top: 8px;
+    padding: 5px 7px;
+    border: 1px solid #5a3a20;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .inbox.alert .item { opacity: 1; }
+  .inbox .item .nm { color: #ffb870; font-size: 9px; }
+  .inbox .item .q  { color: #f2d9a8; font-size: 9px; }
+
+  /* =================== BUBBLE =================== */
+  .bubble {
+    position: fixed;
+    background: #fffbe6;
+    color: #1a0a05;
+    border: 2px solid #1a0a05;
+    padding: 7px 11px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+    z-index: 15;
+    opacity: 0;
+    transition: opacity 0.3s;
+    box-shadow: 0 0 18px #ff8f3aaa;
+    animation: bob 1.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .bubble.show { opacity: 1; }
+  .bubble::after {
+    content: '';
+    position: absolute; bottom: -8px; left: 14px;
+    border: 7px solid transparent; border-top-color: #1a0a05;
+  }
+  .bubble::before {
+    content: '';
+    position: absolute; bottom: -5px; left: 16px;
+    border: 5px solid transparent; border-top-color: #fffbe6;
+    z-index: 1;
+  }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  .bubble .q { color: #c03810; font-weight: bold; margin-right: 4px; }
+
+  /* =================== CONFLICT TOAST =================== */
+  .conflict-toast {
+    position: fixed;
+    top: 60px; left: 50%; transform: translate(-50%, -20px);
+    background: rgba(255, 64, 32, 0.95); color: #fff;
+    padding: 12px 22px; border-radius: 6px;
+    font-family: 'Silkscreen', monospace; font-size: 11px; letter-spacing: 0.14em;
+    z-index: 60; box-shadow: 0 0 30px #ff4020cc;
+    border: 2px solid #fff;
+    opacity: 0;
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .conflict-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* =================== SPOTLIGHT =================== */
+  .spotlight {
+    position: fixed;
+    pointer-events: none;
+    border: 2px solid #ffde5a;
+    border-radius: 8px;
+    box-shadow: 0 0 30px #ffde5aaa, inset 0 0 30px #ffde5a33;
+    z-index: 22;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(.3,.7,.3,1);
+  }
+  .spotlight.show { opacity: 1; }
+  .spotlight .pointer {
+    position: absolute;
+    top: -28px; left: 50%; transform: translateX(-50%);
+    color: #ffde5a;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px; letter-spacing: 0.15em;
+    background: rgba(10,4,0,0.94);
+    padding: 3px 10px;
+    border: 1px solid #ffde5a; border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  /* =================== CALLOUT BAR =================== */
+  .callout-bar {
+    position: absolute; bottom: 40px; left: 0; right: 0;
+    background: rgba(10, 4, 0, 0.96);
+    border-top: 2px solid #ffb870;
+    padding: 14px 22px;
+    z-index: 40;
+    display: flex; align-items: center; gap: 18px;
+    font-family: 'IBM Plex Mono', monospace;
+    backdrop-filter: blur(8px);
+  }
+  .callout-bar .act {
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.25em; color: #ffb870;
+    min-width: 80px;
+  }
+  .callout-bar .narr {
+    flex: 1; color: #f2d9a8; font-size: 14px; line-height: 1.4;
+  }
+  .callout-bar .narr b { color: #ffde5a; }
+  .callout-bar .narr code { color: #8ad06a; background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 2px; }
+  .callout-bar .progress { display: flex; gap: 5px; margin-left: 14px; }
+  .callout-bar .progress .dot {
+    width: 22px; height: 3px; background: #3a2010; transition: background 0.3s;
+  }
+  .callout-bar .progress .dot.done { background: #ffb870; }
+  .callout-bar .progress .dot.active { background: #ffde5a; box-shadow: 0 0 6px #ffde5a; }
+  .callout-bar .ctrls { display: flex; gap: 6px; margin-left: 8px; }
+  .callout-bar .ctrls button {
+    background: transparent; border: 1px solid #5a3a20; color: #f2d9a8;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.14em;
+    padding: 6px 10px;
+    cursor: pointer; border-radius: 2px;
+  }
+  .callout-bar .ctrls button:hover { border-color: #ffb870; color: #ffb870; }
+
+  /* =================== END CARD =================== */
+  .end-card {
+    position: absolute;
+    inset: 46px 0 80px 0;
+    background: rgba(10, 4, 0, 0.92);
+    backdrop-filter: blur(10px);
+    z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s;
+  }
+  .end-card.show { opacity: 1; pointer-events: auto; }
+  .end-card h1 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 40px; color: #ffb870;
+    letter-spacing: 0.22em;
+    text-align: center;
+    text-shadow: 0 0 30px #ff885066;
+  }
+  .end-card .tag {
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px; color: #8ad06a;
+    letter-spacing: 0.2em;
+    margin-top: -8px;
+  }
+  .end-card .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    margin-top: 10px;
+    max-width: 780px;
+  }
+  .end-card .stat-box {
+    text-align: center;
+    background: rgba(255,184,112,0.05);
+    border: 1px solid #3a2010;
+    padding: 16px 20px;
+    border-radius: 4px;
+    min-width: 140px;
+  }
+  .end-card .stat-box .v {
+    font-family: 'Silkscreen', monospace;
+    font-size: 22px;
+    color: #ffde5a;
+    margin-bottom: 6px;
+  }
+  .end-card .stat-box .k {
+    font-family: 'Silkscreen', monospace;
+    font-size: 9px; letter-spacing: 0.18em; color: #8a7a60;
+  }
+  .end-card .ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .end-card .ctas a {
+    padding: 12px 22px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px; letter-spacing: 0.2em;
+    border-radius: 3px;
+    border: 1px solid #5a3a20;
+    color: #f2d9a8;
+    text-decoration: none;
+  }
+  .end-card .ctas a.primary { background: #ffb870; color: #0a0400; border-color: #ffb870; }
+  .end-card .ctas a.primary:hover { background: #ffde5a; }
+  .end-card .ctas a:hover { border-color: #ffb870; color: #ffb870; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="logo"></div>
+    <span class="name">CLAUDE COLONY</span>
+    <span class="tag">· DEMO MODE</span>
+  </div>
+  <div class="nav">
+    <a href="/live.html" class="primary">◆ TRY IT LIVE</a>
+    <a href="/">◀ HOME</a>
+  </div>
+</div>
+
+<div id="stage">
+  <div class="sky" id="sky"></div>
+  <div class="sun" id="sun"></div>
+  <div class="grass" id="grass"></div>
+  <div class="soil"></div>
+
+  <svg class="tunnels" id="svg" viewBox="0 0 1600 900" preserveAspectRatio="none">
+    <g id="tunnelPaths"></g>
+    <g id="chambers"></g>
+  </svg>
+
+  <div id="trees"></div>
+  <div id="ants"></div>
+
+  <!-- Inbox (starts dim, alerts in act 6) -->
+  <div class="inbox" id="inbox">
+    <h3><span>⚠ NEEDS YOU</span><span class="count" id="ic">0</span></h3>
+    <div class="item" id="inboxItem">
+      <div class="nm">worker-02</div>
+      <div class="q">git push to main?</div>
+    </div>
+  </div>
+
+  <!-- Bubble over waiting ant -->
+  <div class="bubble" id="bubble"><span class="q">?</span> git push to main?</div>
+
+  <!-- Conflict toast -->
+  <div class="conflict-toast" id="conflictToast">⚠ CONFLICT — 2 ants on <b>src/auth/login.ts</b></div>
+
+  <!-- Spotlights for narration -->
+  <div class="spotlight" id="sp1"><div class="pointer"></div></div>
+  <div class="spotlight" id="sp2"><div class="pointer"></div></div>
+
+  <div class="queen-strip">
+    <div class="q">QUEEN <span id="qc">(0 ants)</span></div>
+    <span class="hint">DEMO — Space = pause · R = restart · S = skip</span>
+  </div>
+
+  <!-- End card -->
+  <div class="end-card" id="endCard">
+    <h1>THAT'S THE LOOP</h1>
+    <div class="tag">· TASK → SWARM → SHIP ·</div>
+    <div class="stats">
+      <div class="stat-box"><div class="v">4</div><div class="k">PROJECTS</div></div>
+      <div class="stat-box"><div class="v">6</div><div class="k">ANTS</div></div>
+      <div class="stat-box"><div class="v">1</div><div class="k">CONFLICT CAUGHT</div></div>
+      <div class="stat-box"><div class="v">$0.42</div><div class="k">TOTAL SPEND</div></div>
+    </div>
+    <div class="ctas">
+      <a class="primary" href="/live.html">◆ TRY ON YOUR MACHINE</a>
+      <a href="#" onclick="restart(); return false;">↻ REPLAY</a>
+      <a href="/">◀ HOME</a>
+      <a href="https://github.com/claude-colony/colony" target="_blank">★ GITHUB</a>
+    </div>
+  </div>
+
+  <!-- Callout bar (bottom) -->
+  <div class="callout-bar">
+    <div class="act" id="actLabel">ACT 1 / 8</div>
+    <div class="narr" id="narr">◆ A quiet colony — no sessions yet.</div>
+    <div class="progress" id="progress">
+      <div class="dot active"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <div class="ctrls">
+      <button id="btnPause">⏸ PAUSE</button>
+      <button id="btnSkip">⏭ SKIP</button>
+      <button id="btnRestart">↻ RESTART</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// CLAUDE COLONY — DEMO v2
+// 8-act scripted walkthrough showing real colony development:
+//   1. Empty colony
+//   2. First project discovered — tree grows, tunnel digs itself
+//   3. More projects pop up in succession
+//   4. Ants hatch, populate tunnels (cargo visible)
+//   5. Swarm — multi-ant activity, tandem work
+//   6. Interference — 2 ants on same file, red conflict alert
+//   7. Needs you — stop, bubble, inbox alerts, 6 signals
+//   8. Approve → deploy → end stats
+// ============================================================================
+
+const VB_W = 1600, VB_H = 900;
+const svg = document.getElementById('svg');
+const antsLayer = document.getElementById('ants');
+const treesLayer = document.getElementById('trees');
+const tunnelPaths = document.getElementById('tunnelPaths');
+const chambers = document.getElementById('chambers');
+const sky = document.getElementById('sky');
+const sun = document.getElementById('sun');
+const grass = document.getElementById('grass');
+const narrEl = document.getElementById('narr');
+const actLabel = document.getElementById('actLabel');
+const progressDots = document.getElementById('progress').children;
+const inbox = document.getElementById('inbox');
+const bubble = document.getElementById('bubble');
+const conflictToast = document.getElementById('conflictToast');
+const endCard = document.getElementById('endCard');
+const sp1 = document.getElementById('sp1');
+const sp2 = document.getElementById('sp2');
+const qc = document.getElementById('qc');
+
+function svgToScreen(x, y) {
+  const rect = svg.getBoundingClientRect();
+  return { x: (x / VB_W) * rect.width, y: (y / VB_H) * rect.height + rect.top };
+}
+function escapeHTML(s) { return (s || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+
+// ============================================================================
+// PROJECTS
+// ============================================================================
+const PROJECT_DEFS = [
+  { path: '~/your-repo',      foliage: '#2a5028', xFrac: 0.18 },
+  { path: '~/api-gateway',    foliage: '#25443a', xFrac: 0.40 },
+  { path: '~/auth-service',   foliage: '#3a2c42', xFrac: 0.62 },
+  { path: '~/dashboard-web',  foliage: '#4a3020', xFrac: 0.84 },
+];
+
+const projects = new Map();
+
+function createProject(def) {
+  if (projects.has(def.path)) return projects.get(def.path);
+  const x = def.xFrac * VB_W;
+
+  // SVG tunnel path (starts at 0 length — will animate in)
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', `M ${x} 160 L ${x} 820`);
+  p.setAttribute('class', 'tunnel');
+  p.setAttribute('stroke-dasharray', '800');
+  p.setAttribute('stroke-dashoffset', '800');
+  tunnelPaths.appendChild(p);
+
+  // Chamber marker
+  const cm = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  cm.setAttribute('cx', x); cm.setAttribute('cy', 820);
+  cm.setAttribute('r', 0); cm.setAttribute('opacity', 0);
+  chambers.appendChild(cm);
+
+  // Tree
+  const tree = document.createElement('div');
+  tree.className = 'project-tree';
+  tree.style.left = `${def.xFrac * 100}%`;
+  tree.style.top = 'calc(22% + 42px - 46px)';
+  tree.innerHTML = `
+    <div class="foliage" style="--foliage: ${def.foliage}"></div>
+    <div class="label">${escapeHTML(def.path)}</div>
+  `;
+  treesLayer.appendChild(tree);
+
+  const rec = { def, path: p, chamber: cm, tree, x, pathLen: p.getTotalLength() };
+  projects.set(def.path, rec);
+  return rec;
+}
+
+function growProject(def) {
+  const rec = createProject(def);
+  // Tree fades/pops in
+  setTimeout(() => rec.tree.classList.add('grow'), 50);
+  // Tunnel digs downward over 1.2s
+  setTimeout(() => {
+    rec.path.setAttribute('stroke-dashoffset', '0');
+    rec.path.style.transition = 'stroke-dashoffset 1.2s ease-in';
+  }, 300);
+  return rec;
+}
+
+// ============================================================================
+// ANTS
+// ============================================================================
+const ants = new Map();
+let antCounter = 0;
+
+function colorForStatus(s) {
+  if (s === 'error') return '#ff4020';
+  if (s === 'busy')  return '#1a0a05';
+  if (s === 'scout') return '#c04020';
+  return '#5a4030';
+}
+
+function spawnAnt({ name, projectPath, color = '#1a0a05', cargo = null, speed = 0.00015, t0 = 0, hatch = false }) {
+  const proj = projects.get(projectPath);
+  if (!proj) return null;
+  const el = document.createElement('div');
+  el.className = 'ant';
+  if (cargo) el.classList.add('carry');
+  el.style.setProperty('--c', color);
+  if (cargo) el.style.setProperty('--cargo', cargo);
+  el.innerHTML = `<div class="antennae"></div><div class="legs"></div><div class="body"></div><div class="cargo"></div>`;
+  antsLayer.appendChild(el);
+
+  const a = {
+    name, proj,
+    el, path: proj.path, pathLen: proj.pathLen,
+    t: t0,
+    dir: 1,
+    speed,
+    workUntil: 0,
+  };
+  ants.set(name, a);
+
+  if (hatch) {
+    // Egg hatch animation at queen strip
+    const qs = document.querySelector('.queen-strip');
+    const qr = qs.getBoundingClientRect();
+    const egg = document.createElement('div');
+    egg.className = 'hatch-egg';
+    egg.style.left = (qr.left + qr.width / 2 + (Math.random() - 0.5) * 80) + 'px';
+    egg.style.top  = (qr.top - 10) + 'px';
+    document.body.appendChild(egg);
+    setTimeout(() => { egg.classList.add('crack'); setTimeout(() => egg.remove(), 800); }, 900);
+  }
+
+  // Fade in after small delay
+  setTimeout(() => el.classList.add('alive'), 200);
+  updateQueenCount();
+  return a;
+}
+function updateQueenCount() { qc.textContent = `(${ants.size} ants)`; }
+
+function beginWork(ant, duration = 1200) {
+  ant.workUntil = performance.now() + duration;
+  const rect = ant.el.getBoundingClientRect();
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'dust';
+    d.style.left = (rect.left + rect.width/2 + (Math.random()-0.5)*10) + 'px';
+    d.style.top  = (rect.top  + rect.height/2 + (Math.random()-0.5)*6) + 'px';
+    d.style.setProperty('--dx', ((Math.random()-0.5)*28) + 'px');
+    d.style.setProperty('--dy', (-Math.random()*16 - 4) + 'px');
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 900);
+  }
+}
+function flashChamber(proj, color) {
+  const c = proj.chamber;
+  c.setAttribute('fill', color);
+  c.setAttribute('r', 4);
+  c.setAttribute('opacity', 1);
+  c.style.transition = 'all 1.6s';
+  requestAnimationFrame(() => { c.setAttribute('r', 20); c.setAttribute('opacity', 0); });
+}
+
+// ============================================================================
+// ANIMATION LOOP
+// ============================================================================
+let last = performance.now();
+function tick(now) {
+  const dt = now - last; last = now;
+  for (const a of ants.values()) {
+    const paused = now < a.workUntil;
+    const eff = paused ? 0 : a.speed;
+    if (eff > 0) {
+      a.t += eff * a.dir * dt;
+      if (a.t >= 1) { a.t = 1; a.dir = -1; }
+      if (a.t <= 0) { a.t = 0; a.dir = 1; }
+    }
+    try {
+      const pt  = a.path.getPointAtLength(a.t * a.pathLen);
+      const pt2 = a.path.getPointAtLength(Math.min(a.pathLen, a.t * a.pathLen + 2));
+      const angle = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
+      const s = svgToScreen(pt.x, pt.y);
+      const jitter = paused ? `translate(${(Math.random()-0.5)*1}px, ${(Math.random()-0.5)*1}px)` : '';
+      a.el.style.transform = `translate(${s.x - 11}px, ${s.y - 6}px) ${jitter} rotate(${angle * (a.dir === -1 ? -1 : 1)}deg)`;
+      a.el.classList.toggle('working', paused);
+      // bubble follows waiting ant
+      if (a.bubbleAttached) {
+        bubble.style.left = (s.x + 12) + 'px';
+        bubble.style.top  = (s.y - 52) + 'px';
+      }
+    } catch {}
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// ============================================================================
+// SPOTLIGHT HELPERS
+// ============================================================================
+function setSpotlight(sp, target, label) {
+  if (!target) { sp.classList.remove('show'); return; }
+  const r = target.getBoundingClientRect();
+  sp.style.left = (r.left - 8) + 'px';
+  sp.style.top  = (r.top - 8) + 'px';
+  sp.style.width  = (r.width + 16) + 'px';
+  sp.style.height = (r.height + 16) + 'px';
+  sp.querySelector('.pointer').textContent = '▾ ' + label;
+  sp.classList.add('show');
+}
+function clearSpots() { sp1.classList.remove('show'); sp2.classList.remove('show'); }
+
+// ============================================================================
+// TIMELINE
+// ============================================================================
+const timeline = [
+  // ACT 1: empty
+  { at: 0,    act: 1, narr: `◆ <b>A quiet colony.</b> No sessions yet — just the queen underground.` },
+  { at: 1000, run: () => { sky.classList.add('show'); sun.classList.add('show'); grass.classList.add('show'); } },
+
+  // ACT 2: first project discovered, tunnel digs
+  { at: 3500, act: 2, narr: `◆ <b>First project discovered.</b> A tree sprouts. A tunnel digs itself straight down — that's the filesystem.` },
+  { at: 4000, run: () => growProject(PROJECT_DEFS[0]) },
+
+  // ACT 3: more projects pop up
+  { at: 7500, act: 3, narr: `◆ <b>More projects join the colony.</b> Each tunnel mirrors a repo — <code>~/your-repo</code>, <code>~/api-gateway</code>, <code>~/auth-service</code>.` },
+  { at: 8200, run: () => growProject(PROJECT_DEFS[1]) },
+  { at: 9200, run: () => growProject(PROJECT_DEFS[2]) },
+  { at: 10200, run: () => growProject(PROJECT_DEFS[3]) },
+
+  // ACT 4: ants hatch
+  { at: 12500, act: 4, narr: `◆ <b>Ants hatch from the queen.</b> Each ant is one Claude Code session working in a real repo.` },
+  { at: 13000, run: () => spawnAnt({ name: 'scout-01', projectPath: PROJECT_DEFS[0].path, color: '#c04020', t0: 0.1, speed: 0.00019, hatch: true }) },
+  { at: 13800, run: () => spawnAnt({ name: 'worker-01', projectPath: PROJECT_DEFS[1].path, cargo: '#ffde5a', t0: 0.4, speed: 0.00014, hatch: true }) },
+  { at: 14600, run: () => spawnAnt({ name: 'worker-02', projectPath: PROJECT_DEFS[2].path, cargo: '#8ad06a', t0: 0.3, speed: 0.00014, hatch: true }) },
+  { at: 15400, run: () => spawnAnt({ name: 'scout-02', projectPath: PROJECT_DEFS[3].path, color: '#c04020', t0: 0.6, speed: 0.00019, hatch: true }) },
+
+  // ACT 5: swarm activity
+  { at: 17500, act: 5, narr: `◆ <b>Swarm.</b> Ants walk up and down their tunnels. <b>Cargo = diffs.</b> Yellow = edits, green = bash, cyan = reads. Chambers pulse on every tool call.` },
+  { at: 18500, run: () => { const a = ants.get('worker-01'); if (a) beginWork(a, 1400); flashChamber(a.proj, '#8ad06a'); } },
+  { at: 19000, run: () => { const a = ants.get('scout-01'); if (a) { beginWork(a, 1000); flashChamber(a.proj, '#8ad06a'); } } },
+  { at: 19800, run: () => spawnAnt({ name: 'worker-03', projectPath: PROJECT_DEFS[0].path, cargo: '#ffde5a', t0: 0.55, speed: 0.00012, hatch: true }) },
+  { at: 20400, run: () => { const a = ants.get('worker-02'); if (a) { beginWork(a, 1400); flashChamber(a.proj, '#8ad06a'); } } },
+
+  // ACT 6: interference / conflict
+  { at: 22500, act: 6, narr: `◆ <b>Interference.</b> Two ants target <code>src/auth/login.ts</code> at once. Colony catches the collision and flashes red — you fix it before it ships.` },
+  { at: 23000, run: () => spawnAnt({ name: 'worker-04', projectPath: PROJECT_DEFS[0].path, cargo: '#ff4020', t0: 0.5, speed: 0.00013 }) },
+  { at: 23500, run: () => {
+    const a = ants.get('worker-03'); if (a) { a.workUntil = performance.now() + 1500; }
+    const b = ants.get('worker-04'); if (b) { b.workUntil = performance.now() + 1500; }
+    flashChamber(projects.get(PROJECT_DEFS[0].path), '#ff4020');
+    conflictToast.classList.add('show');
+    setSpotlight(sp1, conflictToast, '⚠ 1. red toast');
+  }},
+  { at: 26000, run: () => { conflictToast.classList.remove('show'); clearSpots(); } },
+
+  // ACT 7: needs you — six signals
+  { at: 27000, act: 7, narr: `◆ <b>One ant needs you.</b> <b>Six signals fire at once:</b> pulsing ring, bubble, inbox glow, tab flash, push, SMS. Impossible to miss.` },
+  { at: 27500, run: () => {
+    const a = ants.get('worker-02');
+    if (a) {
+      a.speed = 0;
+      a.el.classList.add('waiting');
+      bubble.classList.add('show');
+      bubble.style.left = (a.el.getBoundingClientRect().left + 12) + 'px';
+      bubble.style.top  = (a.el.getBoundingClientRect().top - 52) + 'px';
+      a.bubbleAttached = true;
+    }
+    inbox.classList.add('alert');
+    document.getElementById('ic').textContent = '1';
+    setSpotlight(sp1, bubble, '1. bubble');
+    setSpotlight(sp2, inbox, '2. inbox glows');
+  }},
+  { at: 30500, run: () => clearSpots() },
+
+  // ACT 8: approve → deploy → end
+  { at: 31500, act: 8, narr: `◆ <b>Approve → deploy → done.</b> You clicked yes. Ant resumes, push fires, preview deploys. Total spend: <b>$0.42</b>. You never opened a terminal.` },
+  { at: 32500, run: () => {
+    // dismiss waiting
+    const a = ants.get('worker-02');
+    if (a) { a.el.classList.remove('waiting'); a.speed = 0.00014; a.bubbleAttached = false; }
+    bubble.classList.remove('show');
+    inbox.classList.remove('alert');
+    document.getElementById('ic').textContent = '0';
+  }},
+  { at: 33500, run: () => {
+    // deploy celebration: pulse all chambers green, cargo chains flow
+    for (const p of projects.values()) flashChamber(p, '#8ad06a');
+  }},
+  { at: 34200, run: () => {
+    for (const p of projects.values()) flashChamber(p, '#ffde5a');
+  }},
+  { at: 35500, run: () => endCard.classList.add('show') },
+];
+
+// ============================================================================
+// PLAYER
+// ============================================================================
+let startTs = performance.now();
+let paused = false;
+let pauseAt = 0;
+let pauseOffset = 0;
+let scheduledIdx = 0;
+
+function runStep(step) {
+  if (step.act) {
+    actLabel.textContent = `ACT ${step.act} / 8`;
+    for (let i = 0; i < progressDots.length; i++) {
+      progressDots[i].classList.remove('active', 'done');
+      if (i < step.act - 1) progressDots[i].classList.add('done');
+      if (i === step.act - 1) progressDots[i].classList.add('active');
+    }
+  }
+  if (step.narr) narrEl.innerHTML = step.narr;
+  if (step.run) try { step.run(); } catch (e) { console.warn('demo step failed:', e); }
+}
+
+function loop() {
+  if (paused) { requestAnimationFrame(loop); return; }
+  const elapsed = performance.now() - startTs - pauseOffset;
+  while (scheduledIdx < timeline.length && timeline[scheduledIdx].at <= elapsed) {
+    runStep(timeline[scheduledIdx]);
+    scheduledIdx++;
+  }
+  if (scheduledIdx < timeline.length) requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+document.getElementById('btnPause').addEventListener('click', () => {
+  if (!paused) { paused = true; pauseAt = performance.now(); document.getElementById('btnPause').textContent = '▶ PLAY'; }
+  else { paused = false; pauseOffset += performance.now() - pauseAt; document.getElementById('btnPause').textContent = '⏸ PAUSE'; requestAnimationFrame(loop); }
+});
+document.getElementById('btnSkip').addEventListener('click', () => {
+  for (let i = scheduledIdx; i < timeline.length; i++) runStep(timeline[i]);
+  scheduledIdx = timeline.length;
+});
+function restart() {
+  // wipe everything
+  for (const p of projects.values()) {
+    p.tree.remove();
+    p.path.remove();
+    p.chamber.remove();
+  }
+  projects.clear();
+  for (const a of ants.values()) a.el.remove();
+  ants.clear();
+  sky.classList.remove('show');
+  sun.classList.remove('show');
+  grass.classList.remove('show');
+  endCard.classList.remove('show');
+  conflictToast.classList.remove('show');
+  bubble.classList.remove('show');
+  inbox.classList.remove('alert');
+  document.getElementById('ic').textContent = '0';
+  clearSpots();
+  updateQueenCount();
+  scheduledIdx = 0;
+  startTs = performance.now();
+  pauseOffset = 0;
+  paused = false;
+  document.getElementById('btnPause').textContent = '⏸ PAUSE';
+  requestAnimationFrame(loop);
+}
+window.restart = restart;
+document.getElementById('btnRestart').addEventListener('click', restart);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === ' ') { e.preventDefault(); document.getElementById('btnPause').click(); }
+  if (e.key === 'r' || e.key === 'R') restart();
+  if (e.key === 's' || e.key === 'S') document.getElementById('btnSkip').click();
+});
+
+window.addEventListener('resize', () => {
+  for (const p of projects.values()) p.pathLen = p.path.getTotalLength();
+  for (const a of ants.values()) a.pathLen = a.path.getTotalLength();
+});
+</script>
+</body>
+</html>

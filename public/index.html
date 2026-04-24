@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Colony — watch your AI agents work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: #0d0805;
+    color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  a { color: #ffb870; text-decoration: none; }
+  a:hover { color: #ffde5a; }
+
+  /* ------ NAV ------ */
+  .nav {
+    position: sticky; top: 0;
+    background: rgba(10, 4, 0, 0.94);
+    border-bottom: 1px solid #5a3a20;
+    padding: 12px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; font-family: 'Silkscreen', monospace; }
+  .brand .logo {
+    width: 24px; height: 24px;
+    background: radial-gradient(#ffb870, #c06030);
+    border-radius: 50%;
+    box-shadow: 0 0 12px #ffb87088;
+  }
+  .brand .n { color: #ffb870; letter-spacing: 0.18em; font-size: 13px; }
+  .nav .links { display: flex; gap: 18px; font-size: 11px; letter-spacing: 0.14em; font-family: 'Silkscreen', monospace; }
+  .nav .cta {
+    background: #ffb870; color: #0a0400;
+    padding: 8px 16px; border-radius: 3px;
+    font-family: 'Silkscreen', monospace; font-size: 11px; letter-spacing: 0.15em;
+    border: 0; cursor: pointer;
+  }
+  .nav .cta:hover { background: #ffde5a; }
+
+  /* ------ HERO ------ */
+  .hero {
+    padding: 80px 32px 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: center;
+    position: relative;
+  }
+  .hero .eyebrow {
+    color: #8ad06a;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 56px;
+    letter-spacing: 0.08em;
+    color: #ffb870;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    text-shadow: 0 0 30px #ff885044;
+  }
+  .hero h1 .sm { display: block; font-size: 22px; color: #f2d9a8; letter-spacing: 0.12em; margin-top: 8px; }
+  .hero p.tag {
+    font-size: 17px;
+    line-height: 1.55;
+    max-width: 720px;
+    margin: 0 auto 32px;
+    color: #d4b88a;
+  }
+  .hero p.tag b { color: #ffde5a; }
+  .hero .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .hero .ctas a {
+    padding: 12px 22px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    border-radius: 3px;
+    border: 1px solid #5a3a20;
+  }
+  .hero .ctas a.primary { background: #ffb870; color: #0a0400; border-color: #ffb870; }
+  .hero .ctas a.primary:hover { background: #ffde5a; }
+  .hero .ctas a.ghost { color: #f2d9a8; }
+  .hero .ctas a.ghost:hover { border-color: #ffb870; color: #ffb870; }
+
+  /* floating ants */
+  .ant-mini {
+    position: absolute;
+    width: 16px; height: 8px;
+    opacity: 0.5;
+  }
+  .ant-mini::before {
+    content: '';
+    position: absolute; left: 2px; top: 2px;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #c04020;
+    box-shadow: 6px 0 0 #c04020, 12px 0 0 #c04020;
+  }
+
+  /* ------ TERMINAL BOX ------ */
+  .terminal {
+    max-width: 640px;
+    margin: 32px auto 0;
+    background: #0a0400;
+    border: 1px solid #5a3a20;
+    border-radius: 4px;
+    text-align: left;
+    overflow: hidden;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .terminal .head {
+    background: #1a0a05;
+    padding: 7px 12px;
+    border-bottom: 1px solid #5a3a20;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    color: #8a7a60;
+    letter-spacing: 0.18em;
+    display: flex; gap: 6px;
+  }
+  .terminal .head .dot { width: 8px; height: 8px; border-radius: 50%; background: #5a3a20; }
+  .terminal .body {
+    padding: 14px 18px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #8ad06a;
+  }
+  .terminal .body .p { color: #8a7a60; }
+  .terminal .body .c { color: #ffde5a; }
+
+  /* ------ FEATURE GRID ------ */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 32px;
+  }
+  .section h2 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 24px;
+    color: #ffb870;
+    letter-spacing: 0.14em;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .section .s-tag {
+    text-align: center;
+    color: #8a7a60;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    margin-bottom: 48px;
+  }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .feature {
+    background: rgba(255,184,112,0.04);
+    border: 1px solid #3a2010;
+    padding: 20px 22px;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+  }
+  .feature:hover { border-color: #ffb870; }
+  .feature .ico {
+    font-size: 22px;
+    margin-bottom: 10px;
+  }
+  .feature h3 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 13px;
+    color: #ffde5a;
+    letter-spacing: 0.14em;
+    margin-bottom: 8px;
+  }
+  .feature p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #c8b088;
+  }
+  .feature p b { color: #ffb870; }
+
+  /* ------ ARCH BLOCK ------ */
+  .arch {
+    background: rgba(10, 4, 0, 0.6);
+    border: 1px solid #3a2010;
+    padding: 28px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #c8b088;
+    white-space: pre;
+    overflow-x: auto;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .arch b { color: #ffb870; }
+  .arch i { color: #8ad06a; font-style: normal; }
+
+  /* ------ DEMO STRIP ------ */
+  .demo-strip {
+    background: linear-gradient(90deg, #1a0a05, #2a1605, #1a0a05);
+    border-top: 1px solid #5a3a20;
+    border-bottom: 1px solid #5a3a20;
+    padding: 50px 32px;
+    text-align: center;
+  }
+  .demo-strip h3 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: #ffb870;
+    letter-spacing: 0.14em;
+    margin-bottom: 10px;
+  }
+  .demo-strip p {
+    color: #c8b088;
+    margin-bottom: 20px;
+  }
+
+  /* ------ SIGNAL ROW ------ */
+  .signals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  .sig {
+    background: rgba(255, 143, 58, 0.08);
+    border: 1px solid #5a3a20;
+    border-left: 3px solid #ff8f3a;
+    padding: 12px 16px;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sig .ico { font-size: 18px; }
+
+  /* ------ FOOTER ------ */
+  footer {
+    border-top: 1px solid #3a2010;
+    padding: 32px;
+    text-align: center;
+    color: #8a7a60;
+    font-size: 11px;
+    font-family: 'Silkscreen', monospace;
+    letter-spacing: 0.15em;
+  }
+  footer a { margin: 0 10px; }
+
+  /* stars behind hero */
+  .stars {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+      radial-gradient(1px 1px at 34% 32%, #fff8, transparent),
+      radial-gradient(1px 1px at 58% 12%, #fff, transparent),
+      radial-gradient(1px 1px at 72% 48%, #fffa, transparent),
+      radial-gradient(1px 1px at 88% 28%, #fff, transparent),
+      radial-gradient(1px 1px at 22% 62%, #fff8, transparent),
+      radial-gradient(1.5px 1.5px at 45% 78%, #fff, transparent);
+    opacity: 0.25;
+    z-index: -1;
+  }
+
+  /* responsive */
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 36px; }
+    .hero h1 .sm { font-size: 16px; }
+    .section { padding: 48px 20px; }
+    .arch { font-size: 9px; padding: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+
+<div class="nav">
+  <div class="brand">
+    <div class="logo"></div>
+    <span class="n">CLAUDE COLONY</span>
+  </div>
+  <div class="links">
+    <a href="/live.html" style="color:#8ad06a">● LIVE</a>
+    <a href="/demo.html">DEMO</a>
+    <a href="/colony.html">MOCK</a>
+    <a href="/gallery.html">GALLERY</a>
+    <a href="https://github.com/claude-colony/colony" target="_blank">GITHUB</a>
+    <a href="/README.md" target="_blank">DOCS</a>
+  </div>
+  <a class="cta" href="/demo.html">▶ WATCH DEMO</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="ant-mini" style="top: 20%; left: 8%; animation: float 8s linear infinite"></div>
+  <div class="ant-mini" style="top: 40%; right: 10%; animation: float 10s linear infinite reverse"></div>
+
+  <div class="eyebrow">◆ OPEN SOURCE · MIT · v0.1.0</div>
+  <h1>CLAUDE COLONY<span class="sm">watch your AI agents work</span></h1>
+  <p class="tag">
+    A pixel-art ant colony where <b>each tunnel is a directory</b> in your repo and <b>each ant is a Claude agent</b>. When one needs you, it pulses orange — impossible to miss. Text back from anywhere: drawer, phone, or SMS.
+  </p>
+  <div class="ctas">
+    <a class="primary" href="/live.html">● LIVE COLONY</a>
+    <a class="ghost" href="/demo.html">▶ 40s DEMO</a>
+    <a class="ghost" href="https://github.com/claude-colony/colony" target="_blank">★ GITHUB</a>
+  </div>
+  <p style="margin-top:16px;color:#8ad06a;font-size:12px;font-family:'Silkscreen',monospace;letter-spacing:0.15em">◉ LIVE = WATCH YOUR REAL CLAUDE CODE SESSIONS RIGHT NOW</p>
+
+  <div class="terminal">
+    <div class="head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:8px">~ / colony</span></div>
+    <div class="body">
+<span class="p"># zero-config, uses your Claude Code subscription</span>
+$ <span class="c">bunx claude-colony</span>
+◆ colony running at http://localhost:3174
+◆ 0 agents. drop a leaf to spawn.
+
+<span class="p"># or BYO Anthropic API key</span>
+$ <span class="c">ANTHROPIC_API_KEY=sk-ant-xxxx bunx claude-colony</span>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section">
+  <h2>◆ WHAT MAKES IT WORK</h2>
+  <div class="s-tag">five ideas, one view</div>
+  <div class="features">
+    <div class="feature">
+      <div class="ico">🗺️</div>
+      <h3>FILESYSTEM = MAP</h3>
+      <p>Tunnels <b>literally mirror your repo tree</b>. Agent editing <code>src/auth/login.ts</code>? You watch it walk there. Emergent traffic patterns show where real work is happening.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">🪫</div>
+      <h3>COOL LAPTOP</h3>
+      <p>Agents run on a <b>remote worker</b> (fly.io, railway, your VPS). Your browser just renders ants. ~2% CPU. Close the lid — ants keep digging.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">🔔</div>
+      <h3>SIX-SIGNAL ALERT</h3>
+      <p>Ring pulse + bubble + inbox + tab flash + push notification + optional SMS. You cannot miss when an agent needs you.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">💬</div>
+      <h3>TEXT BACK ANYWHERE</h3>
+      <p>Drawer chat on desktop. Responsive layout on phone. <b>SMS via Twilio</b> when you're away from a screen. Reply <code>Y</code> to approve a push.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">⎇</div>
+      <h3>GIT WORKTREES</h3>
+      <p>Each agent works in its own isolated worktree. <b>No merge conflicts between agents.</b> Auto-merge when tests pass, manual review when they don't.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">🪴</div>
+      <h3>YOUR ACCOUNT</h3>
+      <p>Use your Claude Code subscription (free for Max/Team) or plug in an Anthropic API key. We never see your credentials — the worker you run holds them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SIGNALS -->
+<section class="section">
+  <h2>◆ SIX WAYS YOU KNOW THEY NEED YOU</h2>
+  <div class="s-tag">impossible to miss, trivial to answer</div>
+  <div class="signals">
+    <div class="sig"><span class="ico">🟠</span><span><b style="color:#ffb870">1. Pulsing ring</b> expands around the ant</span></div>
+    <div class="sig"><span class="ico">💬</span><span><b style="color:#ffb870">2. Speech bubble</b> with the question</span></div>
+    <div class="sig"><span class="ico">📬</span><span><b style="color:#ffb870">3. Inbox</b> glows red with count</span></div>
+    <div class="sig"><span class="ico">📑</span><span><b style="color:#ffb870">4. Tab title</b> flashes <code>(1)</code></span></div>
+    <div class="sig"><span class="ico">🖥️</span><span><b style="color:#ffb870">5. Push notification</b> (opt-in)</span></div>
+    <div class="sig"><span class="ico">📱</span><span><b style="color:#ffb870">6. SMS ping</b> via Twilio bridge</span></div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="section">
+  <h2>◆ ARCHITECTURE</h2>
+  <div class="s-tag">one page, no microservice soup</div>
+  <div class="arch">  <b>BROWSER / PHONE</b>            <b>REMOTE WORKER</b>              <b>ANTHROPIC</b>
+  ┌──────────────────┐          ┌────────────────┐            ┌──────────┐
+  │  Colony SPA      │◂──WS───▸ │   Bun + Hono   │ ◂──HTTPS─▸ │  Claude  │
+  │  SVG + divs      │          │                │            └──────────┘
+  │  <i>~2% CPU</i>          │          │  agent SDK     │                 ▲
+  └──────────────────┘          │  state store   │                 │
+           ▲                    │  event bus     │         ┌───────┴───────┐
+           │                    │                │         │ git worktrees │
+           │ (push / SMS)       │  plugin bus    │ ── git ─│ per agent     │
+           │                    └────────┬───────┘         └───────────────┘
+  ┌────────┴─────────┐                   │
+  │  Twilio / WhatsApp│◂────── subscribe ┘
+  │  Web Push / Email │
+  └───────────────────┘
+
+  <i>your laptop draws ants. the worker runs the agents. close the lid — ants keep digging.</i></div>
+  <div style="text-align:center; margin-top: 24px"><a href="/ARCHITECTURE.md" target="_blank">→ full architecture docs</a></div>
+</section>
+
+<!-- DEMO STRIP -->
+<section class="demo-strip">
+  <h3>◆ SEE IT IN 40 SECONDS</h3>
+  <p>Auto-play tour — no login, no download.</p>
+  <a class="nav cta" href="/demo.html" style="display:inline-block; text-decoration:none">▶ PLAY DEMO</a>
+</section>
+
+<!-- AUTH PICKER -->
+<section class="section">
+  <h2>◆ BRING YOUR OWN ACCOUNT</h2>
+  <div class="s-tag">three auth modes, all user-controlled</div>
+  <div class="features">
+    <div class="feature">
+      <div class="ico">①</div>
+      <h3>CLAUDE CODE INHERIT</h3>
+      <p><b>Zero setup.</b> Already logged into <code>claude</code> CLI? Colony reads those creds. Your agents run on your subscription seat. Works on your laptop only.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">②</div>
+      <h3>BYO API KEY</h3>
+      <p>Set <code>ANTHROPIC_API_KEY</code> and deploy anywhere. Per-token billing direct to your Anthropic Console. Best for self-host, teams, CI.</p>
+    </div>
+    <div class="feature">
+      <div class="ico">③</div>
+      <h3>COLONY CLOUD <span style="color:#8a7a60">(soon)</span></h3>
+      <p>Managed hosting, no VPS to run. OAuth login, we forward to your Anthropic key. For phone-only users.</p>
+    </div>
+  </div>
+  <div style="text-align:center; margin-top: 24px"><a href="/AUTH.md" target="_blank">→ full auth flow docs</a></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  MIT LICENSE · <a href="https://github.com/claude-colony/colony">GITHUB</a> · <a href="/README.md">README</a> · <a href="/ARCHITECTURE.md">ARCHITECTURE</a> · <a href="/AUTH.md">AUTH</a>
+  <br /><br />
+  <span style="color:#5a3a20">~ the queen thanks you ~</span>
+</footer>
+
+<style>
+  @keyframes float {
+    0% { transform: translateX(0) translateY(0); }
+    50% { transform: translateX(50px) translateY(-20px); }
+    100% { transform: translateX(0) translateY(0); }
+  }
+</style>
+</body>
+</html>
