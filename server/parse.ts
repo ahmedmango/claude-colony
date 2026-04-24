@@ -17,7 +17,14 @@ export type EventKind =
   | 'usage'
   | 'error'
   | 'system'
-  | 'summary';
+  | 'summary'
+  | 'waiting';
+
+// Tool names that explicitly block on user input.
+export const BLOCKING_TOOL_NAMES = new Set<string>([
+  'AskUserQuestion',
+  'ExitPlanMode',
+]);
 
 export type Event = {
   session_id: string;

@@ -1,26 +1,31 @@
 {
   "name": "claude-colony",
   "version": "0.1.0",
-  "description": "Watch your Claude agents work — a pixel-art ant colony for the Claude Agent SDK. Remote-compute by default.",
+  "description": "Watch your Claude Code sessions work — a pixel-art ant colony that tails ~/.claude/projects/ and renders live sessions as ants crawling your filesystem.",
   "type": "module",
   "license": "MIT",
+  "author": "Ahmed Haffadh",
   "repository": {
     "type": "git",
     "url": "https://github.com/ahmedmango/claude-colony"
   },
+  "homepage": "https://github.com/ahmedmango/claude-colony",
+  "bugs": "https://github.com/ahmedmango/claude-colony/issues",
   "keywords": [
     "claude",
+    "claude-code",
     "anthropic",
     "agent",
-    "sdk",
-    "claude-code",
+    "observability",
+    "dashboard",
     "ant-colony",
-    "orchestrator",
     "pixel-art",
-    "opensource"
+    "cli",
+    "developer-tools"
   ],
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.0.0",
+    "node": ">=18.0.0"
   },
   "bin": {
     "claude-colony": "bin/colony.mjs"
@@ -29,6 +34,7 @@
     "bin/",
     "server/",
     "public/",
+    "skills/",
     "README.md",
     "ARCHITECTURE.md",
     "AUTH.md",
@@ -36,15 +42,13 @@
   ],
   "scripts": {
     "dev": "bun run server/index.ts",
-    "mocks": "bun scripts/serve-mocks.ts",
-    "build": "bun run scripts/build.ts",
-    "start": "NODE_ENV=production bun server/index.ts"
+    "start": "bun run server/index.ts",
+    "start:bin": "node bin/colony.mjs",
+    "prepublishOnly": "echo '--- publish check: npm publish --access public'"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "latest",
     "chokidar": "^5.0.0",
-    "hono": "^4.12.15",
-    "zod": "^3.24.0"
+    "hono": "^4.12.15"
   },
   "devDependencies": {
     "@types/bun": "latest",

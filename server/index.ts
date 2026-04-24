@@ -20,6 +20,7 @@ import {
 import { listSkills, getSkill } from './skills.ts';
 import { listProjects } from './projects.ts';
 import { ADAPTERS, describeAll, type Provider } from './llm/index.ts';
+import { notifyWaiting, clearNotificationDedupe } from './notify.ts';
 
 const PORT = Number(process.env.COLONY_PORT ?? 3174);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -132,6 +133,17 @@ app.get('*', async (c) => {
     }
   }
 
+  // docs/ directory (svg, md)
+  if (p.startsWith('/docs/')) {
+    const full = join(REPO, p);
+    if (existsSync(full) && full.startsWith(join(REPO, 'docs'))) {
+      const ext = full.slice(full.lastIndexOf('.'));
+      return new Response(Bun.file(full), {
+        headers: { 'Content-Type': MIME[ext] ?? 'application/octet-stream' },
+      });
+    }
+  }
+
   const full = join(PUBLIC, p);
   if (!full.startsWith(PUBLIC)) return c.notFound();
   if (!existsSync(full)) return c.notFound();
@@ -170,10 +182,20 @@ onSession(({ session, prev, reason }) => {
       costUsd: Math.round(session.costUsd * 1000) / 1000,
       eventCount: session.eventCount,
       model: session.model,
+      lastWaitingKind: session.lastWaitingKind,
       reason,
       prev,
     },
   });
+
+  // Fire desktop notification on transition INTO waiting.
+  if (prev !== 'waiting' && session.status === 'waiting') {
+    notifyWaiting(session, session.lastWaitingKind ?? 'waiting');
+  }
+  // Clear dedupe when ant leaves waiting state.
+  if (prev === 'waiting' && session.status !== 'waiting') {
+    clearNotificationDedupe(session.id);
+  }
 });
 
 onEvent(({ session, event }) => {
@@ -211,6 +233,30 @@ startWatcher({
 startStatusTicker(2_000);
 
 console.log(`[colony] http://localhost:${PORT}`);
+
+// Open browser on boot unless --no-open or COLONY_NO_OPEN=1.
+const NO_OPEN = process.argv.includes('--no-open') || process.env.COLONY_NO_OPEN === '1';
+const START_PATH = '/live.html';
+if (!NO_OPEN) {
+  setTimeout(() => {
+    const url = `http://localhost:${PORT}${START_PATH}`;
+    const cmd = process.platform === 'darwin' ? 'open'
+              : process.platform === 'win32'  ? 'start'
+              : 'xdg-open';
+    try {
+      Bun.spawn([cmd, url], { stdout: 'ignore', stderr: 'ignore' });
+      console.log(`[colony] opened ${url}`);
+    } catch {}
+  }, 400);
+}
+
+// Clean shutdown.
+function shutdown(reason: string) {
+  console.log(`[colony] shutdown (${reason})`);
+  process.exit(0);
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Bun.serve with websocket upgrade
 Bun.serve({

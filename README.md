@@ -1,185 +1,226 @@
 <p align="center">
-  <b>🐜 CLAUDE COLONY</b><br/>
-  <sub>watch your AI agents work — a pixel-art ant colony for the Claude Agent SDK</sub>
+  <img src="./docs/hero.svg" alt="Claude Colony — a pixel-art ant farm that watches your Claude Code sessions" width="720" />
+</p>
+
+<h3 align="center"><code>🐜 claude-colony</code></h3>
+
+<p align="center">
+  Watch your <a href="https://www.anthropic.com/claude-code">Claude Code</a> sessions live, as a pixel-art ant farm.<br/>
+  Each ant is a session. Tunnels mirror your repo tree. When an agent needs you, it stops and pulses — and your Mac pings.
 </p>
 
 <p align="center">
-  <a href="#install"><img src="https://img.shields.io/badge/bunx-claude--colony-ffb870?style=flat-square" /></a>
   <img src="https://img.shields.io/badge/license-MIT-8ad06a?style=flat-square" />
   <img src="https://img.shields.io/badge/runtime-bun-f472b6?style=flat-square" />
-  <img src="https://img.shields.io/badge/agents-claude--sdk-d97706?style=flat-square" />
+  <img src="https://img.shields.io/badge/status-v0.1.0%20observer-ffb870?style=flat-square" />
 </p>
 
 ---
 
-## The pitch
+## What it actually does
 
-You spin up Claude agents to work on your code. Instead of a wall of terminal logs, you watch an **ant colony** — a cross-section of dirt where each **tunnel is a directory in your repo** and each **ant is an agent**. Ants carry glowing bits of code between chambers. When one needs you, it stops and pulses orange — impossible to miss, trivial to answer.
+Claude Colony is a tiny local daemon that **tails `~/.claude/projects/**/*.jsonl`** — the append-only transcripts Claude Code writes for every session — and renders each live session as an ant crawling through your filesystem.
 
-- 🎨 **Filesystem is the map.** Tunnels literally mirror your repo tree. Watch agents traverse `src/auth/login.ts`.
-- 💬 **Six ways to know they need you.** Pulsing ring, bubble, inbox, tab flash, push notification, SMS.
-- 🪫 **Your laptop stays cool.** Agents run on a remote worker. Your browser only renders ants (~2% CPU).
-- 📱 **Texting works.** Reply from the drawer, from your phone, or over SMS via Twilio bridge.
-- 🪴 **Bring your own account.** Use your Claude Code subscription or an Anthropic API key. Nothing locked behind us.
+- 🗺️ **Filesystem is the map.** Each project you've run `claude` in becomes a tunnel. No config.
+- 🐜 **Each ant is a session.** Color = role (scout/worker/soldier). Cargo dot = last tool (read / edit / bash / web).
+- 🔔 **macOS notification when an agent waits.** Detected via `AskUserQuestion`, `ExitPlanMode`, or assistant-text-then-silence heuristic.
+- 💰 **Cost + token meter per session.** I had no idea I'd spent $385 on claude until I saw this.
+- 🛠️ **Spawn new ants from the UI** (⌘+N) — pick a project, a skill, a model, a prompt. Shells out to the `claude` CLI in the target dir.
+- 🔌 **Zero credentials.** Colony never handles your Anthropic key. It just reads the transcripts `claude` itself writes, and shells out to `claude` for spawning.
+
+Observer mode, not orchestrator. No SDK integration required.
 
 ---
 
 ## Install
 
-```bash
-# zero-config: uses your existing Claude Code subscription
-bunx claude-colony
+Claude Colony runs on [Bun](https://bun.sh). Make sure you have it and the [`claude`](https://www.anthropic.com/claude-code) CLI.
 
-# or: self-host anywhere Bun runs
+```bash
+# clone + run (fastest today)
 git clone https://github.com/ahmedmango/claude-colony
-cd claude-colony && bun install && bun run dev
+cd claude-colony
+bun install
+bun start
 ```
 
-Open **http://localhost:3174** — your colony is ready.
+Your browser opens to **http://localhost:3174/live.html** automatically.
 
-```bash
-# deploy your own worker to fly.io in 30 seconds
-fly launch --now
-```
+Keep a `claude` session running in any other terminal — an ant crawls into the colony within seconds.
+
+> **`bunx claude-colony`** — package is `npm publish`-ready (`package.json` bin wired, zero runtime deps beyond `hono` + `chokidar`). Run it yourself to land the one-liner, or wait for the first release.
 
 ### Requirements
 
-- [Bun](https://bun.sh) ≥ 1.0
-- One of:
-  - **Claude Code** subscription (Max or Team) — reads `~/.anthropic/credentials.json` auto
-  - **`ANTHROPIC_API_KEY`** env var — classic BYO
-- Git (for worktree isolation)
+| | |
+|-|-|
+| [Bun](https://bun.sh) | `curl -fsSL https://bun.sh/install \| bash` |
+| [Claude Code](https://www.anthropic.com/claude-code) | any subscription; colony reads its local transcripts |
+| macOS / Linux | Windows untested for notifications, the UI works |
 
 ---
 
-## How to read the colony
-
-| Visual                               | Meaning                                        |
-| ------------------------------------ | ---------------------------------------------- |
-| 🐜 red ant                            | **Scout** — reads files, gathers context       |
-| 🐜 black ant                          | **Worker** — writes + edits code               |
-| 🐜 grey ant (bigger)                  | **Soldier** — runs tests, reviews, caretaker   |
-| glowing dot on ant back              | Cargo = diff being carried (color = language)  |
-| orange pulsing ring around ant       | **Agent needs you.** Click.                    |
-| green pulse at junction              | ✓ tests pass / file saved                      |
-| red pulse at junction                | ✗ error / merge conflict                       |
-| pheromone trail (dashed glow)        | hot file being worked right now                |
-| 🍂 leaf on surface                    | pending task waiting to be picked up           |
-| ♕ queen chamber (bottom)              | you. eggs = queued tasks.                      |
-
----
-
-## Six ways you know an agent needs you
-
-You **cannot miss it**. Whichever part of the UI you're looking at, one of these will tell you:
-
-1. **Pulsing orange ring** expands around the ant. Peripheral-vision grade.
-2. **Speech bubble** above the ant with the question. Click → answer.
-3. **⚠ NEEDS YOU inbox** top-right glows red with count badge.
-4. **Browser tab title** flashes `(1) ⚠ Claude Colony` when the tab is backgrounded.
-5. **System notification** via Web Push API (opt-in). Works on desktop and mobile.
-6. **SMS ping** via optional Twilio bridge — reply `Y`/`N` or freeform from your phone.
-
-Answer once, ant resumes, everything else goes quiet.
-
----
-
-## How to text your agents
-
-Three ways, pick what fits:
-
-### 1. Drawer chat (built in)
-
-Click any ant → right-side drawer opens with the full conversation log, git state, deploy state, and a text box. Type, press Enter, the agent receives it mid-flight via the Agent SDK's `resume` channel.
-
-### 2. Mobile web
-
-Same URL on your phone. Responsive layout drops HUD panels into a bottom-sheet. Tap an ant, chat, approve, lock phone. Ant keeps working. Compute is remote.
-
-### 3. SMS bridge (optional plugin)
-
-```bash
-bun run scripts/enable-sms.ts --twilio-sid=... --phone=+44...
-```
-
-Wires Twilio webhooks → colony event bus. Agent questions → SMS to your phone. Reply `Y`/`N` → approve/deny. Reply freeform → sent back to the agent as context. Works when your laptop is closed.
-
-Also supported: WhatsApp (Twilio), Telegram bot, iMessage Shortcut.
-
----
-
-## Authentication
-
-See **[AUTH.md](./AUTH.md)** for the full flow. Three modes:
-
-| Mode                    | Setup                            | Who pays                      | Best for                          |
-| ----------------------- | -------------------------------- | ----------------------------- | --------------------------------- |
-| **Claude Code inherit** | zero (uses `claude` CLI creds)   | your Claude Code subscription | you already use Claude Code       |
-| **BYO API key**         | `ANTHROPIC_API_KEY` env          | per-token billing             | self-host, teams, CI              |
-| **Colony Cloud**        | OAuth at `cloud.claudecolony.io` | managed plan                  | phone-only, no laptop required    |
-
-No account data ever touches the colony project's servers when self-hosting. All three modes are end-to-end user-controlled.
-
----
-
-## Architecture at a glance
+## What you see
 
 ```
-  BROWSER / PHONE              REMOTE WORKER              ANTHROPIC
-  ┌────────────────┐          ┌──────────────┐           ┌──────────┐
-  │  Colony UI     │◂──WS──▸  │  Hono / Bun  │  ◂──API─▸ │  Claude  │
-  │  (pixel art)   │           │  ┌────────┐  │          └──────────┘
-  │  React 19      │           │  │ Agent  │  │                ▲
-  │  SVG tunnels   │           │  │ SDK    │  │                │
-  └────────────────┘           │  └────────┘  │         ┌──────┴──────┐
-          ▲                    │  ┌────────┐  │         │   worktree  │
-          │  (push / SMS)      │  │ state  │  │─── git ─│  isolation  │
-          │                    │  │ store  │  │         └─────────────┘
-  ┌───────┴────────┐           │  └────────┘  │
-  │  Twilio / Web  │◂──────▸  │  plugin bus   │
-  │  Push / Email  │           └──────────────┘
-  └────────────────┘
+   sky                         the queen (you) lives at the bottom
+   ────────                    eggs beside her = sessions waiting to spawn
+   grass                       
+   ────────                    tunnels = directories you've worked in
+   
+                               ants walk up + down their tunnels
+                               carry cargo (tool calls) in their mouths
+                               pulse orange when they need you
+                               
+                               click any ant → right-drawer opens with
+                               session tokens, model, cost, event stream
+   
 ```
 
-**Your laptop draws ants.** The worker runs the agents. Close your laptop → ants keep digging. Open it → same state via WebSocket reconnect.
+### Reading the colony
 
-Full details in **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+| symbol                    | meaning                                    |
+| ------------------------- | ------------------------------------------ |
+| red ant                   | **scout** — cheap recon, reads files       |
+| black ant                 | **worker** — edits, writes, commits        |
+| grey ant (larger)         | **soldier** — review, tests, caretaker     |
+| glowing dot on ant's back | cargo = active tool call (color = tool)   |
+| pulsing orange ring       | **agent needs you** — click the ant       |
+| green chamber pulse       | tool returned successfully                 |
+| red chamber pulse         | error / merge conflict                     |
+| tree foliage size         | scales with session volume on that repo    |
+
+### Six ways you know an agent needs you
+
+None of them can be missed:
+
+1. Pulsing orange ring around the ant
+2. Speech bubble above it
+3. `⚠ NEEDS YOU` inbox glows red top-right with count
+4. Browser tab title flashes `(1) Claude Colony`
+5. **macOS notification** — fires within 6 seconds of an assistant-text-then-silence, or immediately on a blocking tool call
+6. Dock bounce on the browser
+
+Quiet with `COLONY_SILENT=1`.
 
 ---
 
-## Roadmap
+## Spawn ants from the UI
 
-- [x] Core colony view (tunnels, ants, cargo, chambers)
-- [x] Agent detail drawer (chat, git, deploy, tools)
-- [x] Six-signal "needs you" pattern
-- [ ] Real agent SDK integration (next)
-- [ ] SMS bridge (Twilio plugin)
-- [ ] Mobile bottom-sheet layout
-- [ ] Multi-repo colonies (multiple trees on the surface)
-- [ ] Replay mode (scrub a session)
-- [ ] Caretaker marketplace (prefab personalities)
-- [ ] Colony Cloud (managed hosting)
+Press **`N`** or click **◆ SPAWN +** top-right. Pick:
+
+- **Project** — auto-discovered git repos from `~/code/`, `~/projects/`, `~/Desktop/`
+- **Skill** — 6 seeded (scout, worker, soldier, scholar, engineer, debugger), each a Markdown file in `skills/<name>/SKILL.md`
+- **Provider** — Claude works today; OpenAI / Gemini / Ollama stubs are in the code for v0.2
+- **Model** — per-provider list
+- **Task** — the prompt
+
+Behind the scenes: `claude -p "<prompt>" --model <model> --allowedTools <...>` in the target `cwd`. The new session writes to its own `.jsonl` and the watcher catches it instantly.
+
+### Adding a new skill
+
+Drop a file at `skills/<name>/SKILL.md`:
+
+```markdown
+---
+name: reviewer
+emoji: 🕵️
+color: "#a07055"
+description: reviews PRs line-by-line, flags risks, proposes rewrites
+model: claude-opus-4-7
+allowed-tools: [Read, Grep, Glob, Bash]
+denied-tools: [Edit, Write, MultiEdit]
+---
+
+You are a PR reviewer ant. Your job is to...
+```
+
+Restart the server; new skill appears in the spawn modal.
+
+---
+
+## Architecture
+
+```
+  your terminal ─────── claude CLI ─────── writes ──▸ ~/.claude/projects/*.jsonl
+                                                              │
+                                          tails (chokidar poll) │
+                                                              ▼
+                                                   ┌──────────────────┐
+                                                   │  Bun + Hono      │
+                                                   │  parse + state   │
+                                                   │  event bus       │
+                                                   └──────────┬───────┘
+                                                              │ WebSocket
+                                                              ▼
+                                             your browser (live.html)
+                                                              │
+                                                              └──▸ drawer · spawn modal · notifs
+```
+
+No database. In-memory state, ~10 MB. Reconnecting browsers replay from snapshot.
+
+Full details in **[ARCHITECTURE.md](./ARCHITECTURE.md)**. Auth flows in **[AUTH.md](./AUTH.md)**.
+
+---
+
+## Config
+
+| flag / env                    | default            | what                              |
+| ----------------------------- | ------------------ | --------------------------------- |
+| `--port <n>` / `COLONY_PORT`  | `3174`             | server port                       |
+| `--no-open` / `COLONY_NO_OPEN`| off                | don't auto-open browser on boot   |
+| `--silent` / `COLONY_SILENT`  | off                | suppress desktop notifications    |
+| `COLONY_DEBUG=1`              | off                | verbose watcher logs              |
+
+---
+
+## Roadmap (honest)
+
+Shipped:
+- [x] Live observer via jsonl tailing
+- [x] Project auto-discovery + tunnels
+- [x] Session state model (busy/idle/waiting/error)
+- [x] Desktop notifications on waiting
+- [x] Spawn modal w/ skills + model picker
+- [x] Conflict detection (file-level)
+- [x] Auto-open browser, CLI entrypoint
+- [x] 6 seeded skills
+
+Next up (what would move this from "toy" to "daily driver"):
+- [ ] **`npm publish`** → real `bunx claude-colony` one-liner
+- [ ] Mobile PWA + Web Push (phone watches colony)
+- [ ] Terminal bridge: click ant → jump to its iTerm tab
+- [ ] Click-to-approve blocking tool calls from the colony
+- [ ] Parser v2: capture `permission-mode` / `progress` / `agent-name` event types
+- [ ] Replay mode: scrub a session back in time
+- [ ] OpenAI / Gemini / Ollama adapters (real, not stubs)
+- [ ] Menubar app (Swift or Tauri)
 
 ---
 
 ## Contributing
 
-MIT. Fork it. Issues welcome. The repo structure is deliberately small — the colony should feel like a single organism, not a microservice cluster.
+MIT licensed. Fork, break it, send a PR.
 
 ```
 claude-colony/
-├── public/            # the UI (colony.html, demo.html, gallery.html, index.html)
-├── server/            # Hono + agent SDK adapter
-├── docs/              # diagrams, decisions, design notes
-├── ARCHITECTURE.md    # the whole system on one page
-├── AUTH.md            # auth flows in detail
-└── README.md          # you are here
+├── server/          # Bun + Hono daemon (watcher, parser, state, notify, spawn)
+├── public/          # live.html (the app), demo.html (guided tour), index.html (landing)
+├── skills/          # markdown skill definitions
+├── bin/colony.mjs   # CLI entrypoint (node shim → bun server)
+└── docs/            # architecture + auth notes, hero.svg
 ```
+
+No tests yet. Types are TypeScript. Zero build step — Bun runs `.ts` natively.
 
 ---
 
-## Credits
+## Credits + prior art
 
-Built on the [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents/claude-agent-sdk). Inspired by [Claude Town](https://github.com/yazinsai/town) — same impulse, different metaphor. The ant colony metaphor is an information-density play: tunnels = filesystem, ants = agents, emergent patterns = real engineering hotspots.
+- [Claude Code](https://www.anthropic.com/claude-code) writes the transcripts that make this possible.
+- [Claude Town](https://github.com/yazinsai/town) by Yazin — sibling project, different metaphor.
+- [town-watcher](https://github.com/ahmedmango/town-watcher) — the reference implementation for jsonl tailing. Code for `watcher.ts` + `parse.ts` originated there.
+- Ant colony biology (stigmergy, division of labor) — [E.O. Wilson](https://en.wikipedia.org/wiki/E._O._Wilson).
 
 <sub>~ the queen thanks you ~</sub>

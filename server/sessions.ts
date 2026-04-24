@@ -2,6 +2,7 @@
 
 import { homedir } from 'node:os';
 import type { Event } from './parse.ts';
+import { BLOCKING_TOOL_NAMES } from './parse.ts';
 
 export type SessionStatus = 'busy' | 'idle' | 'waiting' | 'error';
 
@@ -24,6 +25,7 @@ export type Session = {
   model?: string;
   firstSeen: number;
   lastError?: string;
+  lastWaitingKind?: string;      // 'tool:AskUserQuestion' | 'timeout' | undefined
 };
 
 const sessions = new Map<string, Session>();
@@ -191,13 +193,25 @@ export function ingestEvent(we: {
     s.costUsd += (ev.usage.cache_creation_input_tokens * p.cacheWrite) / 1_000_000;
   }
 
+  // During initial seed, parse events to build up token/state but don't chase "waiting" — those are
+  // historical transcripts, not live sessions needing attention. Force idle after seed completes.
+  if (we.fromInitialSeed) {
+    s.status = 'idle';
+    return;
+  }
+
   if (ev.kind === 'error' || ev.is_error) {
     s.status = 'error';
     s.lastError = ev.text;
+  } else if (ev.kind === 'tool_use' && ev.tool_name && BLOCKING_TOOL_NAMES.has(ev.tool_name)) {
+    // Hard waiting: tool explicitly asks user.
+    s.status = 'waiting';
+    s.lastWaitingKind = 'tool:' + ev.tool_name;
+  } else if (ev.kind === 'user') {
+    // User replied — back to busy.
+    s.status = 'busy';
+    s.lastWaitingKind = undefined;
   } else {
-    // simple rule: recent activity = busy, else idle.
-    // Assistant text with no following tool_use within a few seconds often means "asked a question" = waiting,
-    // but detecting that cleanly needs lookahead; defer to next iteration.
     s.status = 'busy';
   }
 
@@ -212,12 +226,38 @@ export function ingestEvent(we: {
   }
 }
 
-// Background tick: flip busy -> idle when nothing heard recently.
+// Background tick: flip busy -> waiting (if last event was assistant text) or -> idle (older).
+const WAITING_ASSISTANT_GRACE_MS = 6_000;       // assistant text with no user reply after this = waiting
+const IDLE_AFTER_MS = BUSY_WINDOW_MS;           // 20s of silence = idle
+const STALE_NEVER_WAIT_MS = 30 * 60 * 1000;     // events older than this never promote to waiting
+
 export function startStatusTicker(intervalMs = 2_000) {
   setInterval(() => {
     const now = Date.now();
     for (const s of sessions.values()) {
-      if (s.status === 'busy' && now - s.lastEventTs > BUSY_WINDOW_MS) {
+      if (s.status !== 'busy') continue;
+      const age = now - s.lastEventTs;
+
+      // Don't promote ancient sessions to waiting — they're abandoned transcripts.
+      if (age > STALE_NEVER_WAIT_MS) {
+        const prev = s.status;
+        s.status = 'idle';
+        emitSessionUpdate(s, prev, 'idle-stale');
+        continue;
+      }
+
+      // Heuristic: last event is assistant text (no tool_use), enough time has passed
+      //   without a user reply → session is waiting for input.
+      if (s.lastEventKind === 'assistant' && age > WAITING_ASSISTANT_GRACE_MS) {
+        const prev = s.status;
+        s.status = 'waiting';
+        s.lastWaitingKind = 'timeout';
+        emitSessionUpdate(s, prev, 'waiting-timeout');
+        continue;
+      }
+
+      // Otherwise, pure idle.
+      if (age > IDLE_AFTER_MS) {
         const prev = s.status;
         s.status = 'idle';
         emitSessionUpdate(s, prev, 'idle-timeout');
