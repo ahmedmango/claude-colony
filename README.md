@@ -31,8 +31,8 @@ You spin up Claude agents to work on your code. Instead of a wall of terminal lo
 bunx claude-colony
 
 # or: self-host anywhere Bun runs
-git clone https://github.com/claude-colony/colony
-cd colony && bun install && bun run dev
+git clone https://github.com/ahmedmango/claude-colony
+cd claude-colony && bun install && bun run dev
 ```
 
 Open **http://localhost:3174** — your colony is ready.
