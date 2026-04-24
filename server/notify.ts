@@ -62,3 +62,27 @@ export async function notifyWaiting(session: Session, reason: string) {
 export function clearNotificationDedupe(sessionId: string) {
   lastNotifiedAt.delete(sessionId);
 }
+
+// Cost alert — fired once per session when it crosses the threshold.
+const costAlerted = new Set<string>();
+
+export async function notifyCostCrossed(session: Session, threshold: number) {
+  if (process.env.COLONY_SILENT === '1') return;
+  if (costAlerted.has(session.id)) return;
+  costAlerted.add(session.id);
+
+  const title = '💰 Claude Colony — cost alert';
+  const subtitle = shortPath(session.projectPath);
+  const body = `session crossed $${threshold.toFixed(2)} (now $${session.costUsd.toFixed(2)})`;
+  const platform = process.platform;
+
+  try {
+    if (platform === 'darwin') {
+      const script = `display notification "${escapeAppleScript(body)}" with title "${escapeAppleScript(title)}" subtitle "${escapeAppleScript(subtitle)}" sound name "Basso"`;
+      Bun.spawn(['osascript', '-e', script], { stdout: 'ignore', stderr: 'ignore' });
+    } else if (platform === 'linux') {
+      Bun.spawn(['notify-send', '-u', 'critical', title, `${subtitle}\n${body}`], { stdout: 'ignore', stderr: 'ignore' });
+    }
+  } catch {}
+  console.log(`[notify] COST ${session.id.slice(0,8)} · ${subtitle} · ${body}`);
+}

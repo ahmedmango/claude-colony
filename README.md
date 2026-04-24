@@ -171,7 +171,19 @@ Full details in **[ARCHITECTURE.md](./ARCHITECTURE.md)**. Auth flows in **[AUTH.
 | `--port <n>` / `COLONY_PORT`  | `3174`             | server port                       |
 | `--no-open` / `COLONY_NO_OPEN`| off                | don't auto-open browser on boot   |
 | `--silent` / `COLONY_SILENT`  | off                | suppress desktop notifications    |
+| `COLONY_COST_WARN`            | `5`                | USD threshold for per-session cost alert (set `0` to disable) |
 | `COLONY_DEBUG=1`              | off                | verbose watcher logs              |
+
+## Docker (dashboard only)
+
+```bash
+docker run --rm -it \
+  -p 3174:3174 \
+  -v "$HOME/.claude:/root/.claude:ro" \
+  ghcr.io/ahmedmango/claude-colony
+```
+
+The dockerized colony tails your mounted `~/.claude/`. Spawning new agents via the UI won't work from inside the container (no `claude` CLI in the image) — use the Docker version as a pure dashboard, run bare-metal for spawning.
 
 ---
 

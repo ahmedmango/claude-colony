@@ -20,7 +20,7 @@ import {
 import { listSkills, getSkill } from './skills.ts';
 import { listProjects } from './projects.ts';
 import { ADAPTERS, describeAll, type Provider } from './llm/index.ts';
-import { notifyWaiting, clearNotificationDedupe } from './notify.ts';
+import { notifyWaiting, clearNotificationDedupe, notifyCostCrossed } from './notify.ts';
 import { reveal, type RevealTarget } from './reveal.ts';
 
 const PORT = Number(process.env.COLONY_PORT ?? 3174);
@@ -203,6 +203,12 @@ onSession(({ session, prev, reason }) => {
   // Clear dedupe when ant leaves waiting state.
   if (prev === 'waiting' && session.status !== 'waiting') {
     clearNotificationDedupe(session.id);
+  }
+
+  // Cost alert — fire once when a session crosses the warn threshold.
+  const warnAt = Number(process.env.COLONY_COST_WARN ?? '5');
+  if (warnAt > 0 && session.costUsd >= warnAt) {
+    notifyCostCrossed(session, warnAt);
   }
 });
 
