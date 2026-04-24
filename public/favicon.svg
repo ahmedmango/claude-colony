@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#0a0400"/>
+  <circle cx="16" cy="16" r="14" fill="none" stroke="#ffb870" stroke-width="0.5" opacity="0.3"/>
+  <!-- ant body: three segments -->
+  <circle cx="8"  cy="16" r="3.5" fill="#ffb870"/>
+  <circle cx="16" cy="16" r="4"   fill="#ffb870"/>
+  <circle cx="25" cy="16" r="4.5" fill="#ffb870"/>
+  <!-- antennae -->
+  <line x1="6" y1="13" x2="2" y2="8"  stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <line x1="6" y1="19" x2="2" y2="23" stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <!-- legs (3 per side) -->
+  <line x1="14" y1="13" x2="10" y2="8"  stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <line x1="17" y1="12" x2="17" y2="7"  stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <line x1="20" y1="13" x2="24" y2="8"  stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <line x1="14" y1="19" x2="10" y2="24" stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <line x1="17" y1="20" x2="17" y2="25" stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+  <line x1="20" y1="19" x2="24" y2="24" stroke="#ffb870" stroke-width="1" stroke-linecap="round"/>
+</svg>

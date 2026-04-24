@@ -103,6 +103,27 @@ export function parseLine(raw: string): Event | null {
   const session_id = (obj.sessionId as string | undefined) ?? '';
   const ts = parseTs(obj.timestamp);
 
+  // Known-but-silent types — these appear in modern Claude Code transcripts but don't
+  // map to colony state. Returning null keeps them out of the event stream without
+  // polluting warning logs.
+  if (type === 'attachment' || type === 'last-prompt' || type === 'progress' ||
+      type === 'custom-title' || type === 'agent-name' || type === 'queue-operation') {
+    return null;
+  }
+
+  // permission-mode: session-level setting (bypassPermissions / plan / default).
+  // Surface as a 'system' event so UIs can note when bypass mode is on.
+  if (type === 'permission-mode') {
+    const mode = (obj.permissionMode as string | undefined) ?? 'unknown';
+    return {
+      session_id,
+      ts,
+      kind: 'system',
+      text: `permission-mode: ${mode}`,
+      raw: obj,
+    };
+  }
+
   if (type === 'summary') {
     return {
       session_id,
