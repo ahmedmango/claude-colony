@@ -1,0 +1,38 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        bun: ['1.1.x', 'latest']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.bun }}
+
+      - run: bun install --frozen-lockfile
+
+      - name: Run tests
+        run: bun test
+
+      - name: Boot daemon smoke test
+        run: |
+          COLONY_NO_OPEN=1 COLONY_SILENT=1 bun server/index.ts &
+          PID=$!
+          sleep 3
+          curl -fsS http://127.0.0.1:3174/healthz
+          curl -fsS http://127.0.0.1:3174/api/skills | grep -q scout
+          curl -fsS http://127.0.0.1:3174/live.html > /dev/null
+          kill $PID

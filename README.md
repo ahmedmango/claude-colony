@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ahmedmango/claude-colony/actions/workflows/test.yml"><img src="https://github.com/ahmedmango/claude-colony/actions/workflows/test.yml/badge.svg" /></a>
   <img src="https://img.shields.io/badge/license-MIT-8ad06a?style=flat-square" />
   <img src="https://img.shields.io/badge/runtime-bun-f472b6?style=flat-square" />
   <img src="https://img.shields.io/badge/status-v0.1.0%20observer-ffb870?style=flat-square" />
