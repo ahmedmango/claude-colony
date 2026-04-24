@@ -58,6 +58,14 @@ Keep a `claude` session running in any other terminal — an ant crawls into the
 | [Claude Code](https://www.anthropic.com/claude-code) | any subscription; colony reads its local transcripts |
 | macOS / Linux | Windows untested for notifications, the UI works |
 
+Verify your setup:
+
+```bash
+bun run doctor
+```
+
+Checks bun, node, `claude` CLI, `~/.claude/projects`, port 3174, and the reveal helpers. Prints fixes for anything missing.
+
 ---
 
 ## What you see

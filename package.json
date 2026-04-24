@@ -44,7 +44,9 @@
     "dev": "bun run server/index.ts",
     "start": "bun run server/index.ts",
     "start:bin": "node bin/colony.mjs",
-    "prepublishOnly": "echo '--- publish check: npm publish --access public'"
+    "doctor": "bun scripts/doctor.ts",
+    "test": "bun test",
+    "prepublishOnly": "bun test"
   },
   "dependencies": {
     "chokidar": "^5.0.0",
