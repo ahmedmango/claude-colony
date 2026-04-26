@@ -64,9 +64,11 @@ export async function reveal(req: RevealRequest): Promise<RevealResult> {
 
       case 'iterm': {
         if (platform !== 'darwin') return { ok: false, target: 'iterm', path, reason: 'iTerm is macOS-only' };
+        // Open iTerm tab at cwd and launch `claude` immediately — one click = ready to chat.
+        const safeP = path.replace(/'/g, `'\\''`);
         const script = `tell application "iTerm"
   activate
-  tell current window to create tab with default profile command "cd '${path.replace(/'/g, `'\\''`)}' && clear"
+  tell current window to create tab with default profile command "/bin/sh -c 'cd \\"${safeP}\\" && exec claude'"
 end tell`;
         Bun.spawn(['osascript', '-e', script], { stdout: 'ignore', stderr: 'ignore' });
         return { ok: true, target: 'iterm', path };

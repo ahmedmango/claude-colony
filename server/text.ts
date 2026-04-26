@@ -75,13 +75,13 @@ end tell
     const out = (await new Response(proc.stdout).text()).trim();
     if (out === 'ok') return { ok: true, app: 'iTerm' };
     if (out === 'no-iterm') return tryTerminalApp(cwd, text);
-    if (out === 'no-match') {
+    if (out === 'no-match' || out === '') {
       // Fallback: try Terminal.app too in case session is there.
       const r = await tryTerminalApp(cwd, text);
       if (r.ok) return r;
-      return { ok: false, reason: `no iTerm tab with cwd=${cwd}. Open the claude session there, or click iTerm reveal first.` };
+      return { ok: false, reason: `No terminal tab open at ${cwd}. This session ended — text-back only works while a 'claude' process is running. Click ITERM ▸ to start a new session there, then retry.` };
     }
-    return { ok: false, reason: 'osascript returned: ' + (out || '<empty>') };
+    return { ok: false, reason: 'osascript: ' + (out || '<empty>') };
   } catch (err) {
     return { ok: false, reason: String(err) };
   }

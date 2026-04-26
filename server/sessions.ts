@@ -31,7 +31,7 @@ export type Session = {
 const sessions = new Map<string, Session>();
 
 const HOME = homedir();
-const BUSY_WINDOW_MS = 20_000;   // activity in last 20s = busy
+const BUSY_WINDOW_MS = 60_000;   // activity in last 60s = busy (claude can think for a while)
 
 // --- pricing (per 1M tokens, USD). Approx Claude Sonnet 4.x / Opus 4.x. -------
 // Simple enough for MVP. Adjust with real rates.

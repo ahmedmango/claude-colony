@@ -157,6 +157,10 @@
   .ant .legs::before { top: 0;  transform: rotate(-22deg); animation: scurry 0.2s infinite alternate; }
   .ant .legs::after  { bottom: 0; transform: rotate(22deg); animation: scurry 0.2s infinite alternate reverse; }
   .ant.idle .legs::before, .ant.idle .legs::after { animation: none; }
+  .ant.idle { opacity: 0.55; }
+  .ant.busy, .ant.waiting {
+    filter: drop-shadow(0 0 4px rgba(255, 222, 90, 0.35));
+  }
   @keyframes scurry {
     0% { transform: rotate(-22deg) scaleX(1); }
     100% { transform: rotate(-30deg) scaleX(0.85); }
@@ -281,8 +285,31 @@
   .empty h2 { color: #ffb870; font-family: 'Silkscreen', monospace; font-size: 18px; letter-spacing: 0.2em; }
   .empty p { font-size: 13px; max-width: 500px; line-height: 1.6; }
   .empty code { color: #8ad06a; background: #0a0400; padding: 2px 7px; border-radius: 2px; font-family: 'IBM Plex Mono', monospace; }
-  .empty .cta { margin-top: 10px; color: #ffb870; font-family: 'Silkscreen', monospace; letter-spacing: 0.15em; }
-  .empty .cta kbd { background: #ffb870; color: #0a0400; padding: 3px 8px; border-radius: 2px; font-size: 11px; }
+  .empty .cta { margin-top: 14px; color: #8a7a60; font-family: 'Silkscreen', monospace; letter-spacing: 0.12em; font-size: 11px; }
+  .empty .cta kbd { background: #2a1605; border: 1px solid #5a3a20; color: #ffde5a; padding: 2px 7px; border-radius: 2px; font-size: 11px; }
+  .empty-cta {
+    display: flex; gap: 8px; align-items: stretch;
+    margin-top: 18px;
+    width: 100%; max-width: 480px;
+  }
+  .empty-cta select {
+    flex: 1;
+    background: #0a0400; border: 1px solid #5a3a20; color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    padding: 12px 14px; border-radius: 4px;
+  }
+  .empty-cta select:focus { outline: none; border-color: #ffb870; }
+  .empty-cta .empty-go {
+    background: #ffb870; color: #0a0400;
+    border: 0;
+    padding: 12px 22px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px; letter-spacing: 0.18em;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .empty-cta .empty-go:hover { background: #ffde5a; }
 
   /* =================== TOOLTIP =================== */
   #tooltip {
@@ -419,6 +446,47 @@
   .text-status { font-family: 'Silkscreen', monospace; font-size: 9px; color: #8a7a60; }
   .text-status.ok { color: #8ad06a; }
   .text-status.err { color: #ff6040; }
+
+  .text-back-dead {
+    margin-bottom: 14px;
+    padding: 12px;
+    background: rgba(138,138,138,0.04);
+    border: 1px solid #5a3a20;
+    border-radius: 4px;
+  }
+  .text-back-dead .lbl {
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.18em;
+    color: #8a7a60;
+    margin-bottom: 4px;
+  }
+  .text-back-dead .hint {
+    font-size: 11px;
+    color: #a8a090;
+    margin-bottom: 0;
+    line-height: 1.45;
+  }
+  .text-back-dead code {
+    background: #0a0400;
+    color: #8ad06a;
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .resume-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px 16px;
+    background: #ffb870;
+    color: #0a0400;
+    border: 0;
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .resume-btn:hover { background: #ffde5a; }
+  .resume-btn code { background: #0a0400; color: #8ad06a; padding: 1px 6px; border-radius: 2px; font-size: 12px; }
 
   /* =================== FIRST-RUN TOUR =================== */
   .tour-bg {
@@ -730,7 +798,7 @@
   </div>
 
   <div class="nav">
-    <button class="toggle" id="btnAll" title="Show all sessions (not just recent)">● 2H</button>
+    <button class="toggle" id="btnAll" title="Show all sessions (not just recent)">● 24H</button>
     <button class="toggle" id="btnLog" title="Toggle live log (L)">◆ LOG</button>
     <a href="/">◀ HOME</a>
     <button class="spawn" id="btnSpawn">◆ SPAWN +</button>
@@ -752,11 +820,12 @@
 
   <div class="empty" id="empty">
     <h2>◆ QUIET COLONY</h2>
-    <p>
-      No sessions active in the last 2 hours. Start a <code>claude</code> session anywhere,
-      or press <kbd style="color:#ffb870">SPAWN +</kbd> to hatch one here.
-    </p>
-    <div class="cta">◆ press <kbd>N</kbd> to spawn</div>
+    <p>No sessions active in the last 24 hours.<br>Pick a project and I'll open <code>claude</code> there for you in iTerm.</p>
+    <div class="empty-cta" style="pointer-events:auto">
+      <select id="emptyProjPicker"></select>
+      <button class="empty-go" onclick="emptyStart()">▸ START SESSION</button>
+    </div>
+    <div class="cta">or press <kbd>A</kbd> to show all historical · <kbd>N</kbd> to spawn one-shot</div>
   </div>
 
   <div class="queen-strip">
@@ -820,13 +889,20 @@
 
       <!-- Text-back input: types message into the iTerm/Terminal tab running this session -->
       <div class="text-back" id="textBack">
-        <div class="lbl">◆ TEXT THE AGENT</div>
-        <div class="hint">types into the iTerm/Terminal tab where this session runs. needs that tab open. enter to send.</div>
+        <div class="lbl" id="textBackLbl">◆ TEXT THE AGENT</div>
+        <div class="hint" id="textBackHint">types into the iTerm/Terminal tab where this session runs. needs that tab open. enter to send.</div>
         <textarea id="textBackInput" placeholder="approve the push  ·  also update the readme  ·  stop and explain"></textarea>
         <div style="display:flex; gap:6px; align-items:center">
           <button class="reveal-btn" onclick="textActive()">⌁ SEND</button>
           <span class="text-status" id="textStatus"></span>
         </div>
+      </div>
+
+      <!-- shown when session isn't currently running -->
+      <div class="text-back-dead" id="textBackDead" style="display:none">
+        <div class="lbl">◆ SESSION NOT RUNNING</div>
+        <div class="hint">this session ended. text-back only works while a <code>claude</code> process is alive.</div>
+        <button class="resume-btn" onclick="revealActive('iterm')">▸ START A NEW <code>claude</code> HERE</button>
       </div>
 
       <div id="d_events_list"></div>
@@ -897,13 +973,13 @@ const emptyEl = document.getElementById('empty');
 
 // Config
 let SHOW_ALL = false;
-const TWO_HOURS = 2 * 60 * 60 * 1000;
+const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000;   // 24 hours
 
 function shouldShow(session) {
   if (SHOW_ALL) return true;
-  if (session.status === 'busy' || session.status === 'error') return true;
+  if (session.status === 'busy' || session.status === 'waiting' || session.status === 'error') return true;
   if (!session.lastEventTs) return false;
-  return (Date.now() - session.lastEventTs) < TWO_HOURS;
+  return (Date.now() - session.lastEventTs) < RECENT_WINDOW_MS;
 }
 
 function svgToScreen(x, y) {
@@ -1292,6 +1368,13 @@ function refreshDrawer(session) {
   document.getElementById('d_events').textContent = session.eventCount || 0;
   document.getElementById('d_model').textContent  = session.model || '—';
 
+  // Text-back only makes sense when the session is currently running.
+  // 'busy' = live activity in last 20s. 'waiting' = paused for user input but still running.
+  // For 'idle' / 'error' the claude process is gone — show a "start new" affordance instead.
+  const isLive = session.status === 'busy' || session.status === 'waiting';
+  document.getElementById('textBack').style.display = isLive ? '' : 'none';
+  document.getElementById('textBackDead').style.display = isLive ? 'none' : '';
+
   // Cache hit rate: cache_read / (cache_read + tokens_in_uncached)
   // tokensIn already excludes cached portion (Anthropic counts billable input separately).
   // So total prompt = cacheRead + cacheCreate + tokensIn. hit = cacheRead / total.
@@ -1359,6 +1442,36 @@ document.addEventListener('keydown', (e) => {
     textActive();
   }
 });
+
+// Empty-state: open iTerm at picked project, run `claude`.
+async function emptyStart() {
+  const sel = document.getElementById('emptyProjPicker');
+  const path = sel?.value;
+  if (!path) { alert('pick a project first'); return; }
+  const r = await fetch('/api/reveal', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path, target: 'iterm' }),
+  });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    alert('failed: ' + (d.reason || 'unknown'));
+  }
+}
+window.emptyStart = emptyStart;
+
+async function hydrateEmptyPicker() {
+  try {
+    const r = await fetch('/api/projects');
+    const d = await r.json();
+    const sel = document.getElementById('emptyProjPicker');
+    if (!sel) return;
+    sel.innerHTML = (d.projects || []).map(p =>
+      `<option value="${escapeHTML(p.path)}">${escapeHTML(p.label)}${p.hasClaudeMd ? '  ★ has CLAUDE.md' : ''}</option>`
+    ).join('') || '<option value="">No git repos found in ~/code, ~/projects, ~/Desktop</option>';
+  } catch {}
+}
+hydrateEmptyPicker();
 
 async function revealActive(target) {
   if (!openSessionId) return;
@@ -1461,7 +1574,7 @@ const btnAll = document.getElementById('btnAll');
 btnAll.addEventListener('click', () => {
   SHOW_ALL = !SHOW_ALL;
   btnAll.classList.toggle('on', SHOW_ALL);
-  btnAll.textContent = SHOW_ALL ? '◉ ALL' : '● 2H';
+  btnAll.textContent = SHOW_ALL ? '◉ ALL' : '● 24H';
   // re-evaluate visibility for every ant
   for (const a of ants.values()) {
     const was = a.visible;
