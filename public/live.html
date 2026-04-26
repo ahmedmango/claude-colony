@@ -45,12 +45,21 @@
   @keyframes blink { 50% { opacity: 0.3; } }
 
   /* compact inline HUD stats */
-  .stats { display: flex; gap: 16px; font-size: 10px; letter-spacing: 0.14em; color: #8a7a60; }
-  .stats .stat { display: flex; gap: 6px; }
-  .stats .stat b { color: #ffde5a; font-weight: 400; }
+  .stats { display: flex; gap: 14px; font-size: 11px; letter-spacing: 0.06em; color: #8a7a60; align-items: baseline; }
+  .stats .stat { display: flex; gap: 4px; align-items: baseline; }
+  .stats .stat b { color: #ffde5a; font-weight: 600; font-size: 13px; font-family: 'Silkscreen', monospace; }
   .stats .stat.busy b  { color: #8ad06a; }
   .stats .stat.error b { color: #ff6040; }
-  .stats .stat .k { color: #8a7a60; }
+  .stats .stat .k {
+    color: #8a7a60; font-size: 13px; font-weight: 700;
+  }
+  .stats .stat.busy .k  { color: #8ad06a; }
+  .stats .stat.error .k { color: #ff6040; }
+  .stats .stat .kk { color: #5a4d3a; font-size: 9px; letter-spacing: 0.2em; text-transform: lowercase; }
+  .stats .stat-sep { color: #3a2010; font-size: 14px; align-self: center; }
+  .stats .stat.muted { color: #5a4d3a; font-size: 10px; }
+  .stats .stat.muted span { color: #8a7a60; }
+  .stats .stat.muted:hover { color: #8a7a60; }
 
   .nav { display: flex; gap: 6px; }
   .nav a, .nav button {
@@ -374,6 +383,134 @@
   .reveal-btn:hover { border-color: #ffb870; color: #ffb870; background: #1a0a05; }
   .reveal-btn:active { transform: scale(0.97); }
 
+  .text-back {
+    margin-bottom: 14px;
+    padding: 12px;
+    background: rgba(138,208,106,0.04);
+    border: 1px solid #3a5a2a;
+    border-radius: 4px;
+  }
+  .text-back .lbl {
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px; letter-spacing: 0.18em;
+    color: #8ad06a;
+    margin-bottom: 4px;
+  }
+  .text-back .hint {
+    font-size: 10px;
+    color: #8a7a60;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .text-back textarea {
+    width: 100%;
+    background: #0a0400;
+    border: 1px solid #3a5a2a;
+    color: #f2d9a8;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 3px;
+    resize: vertical;
+    min-height: 50px;
+    margin-bottom: 6px;
+  }
+  .text-back textarea:focus { outline: none; border-color: #8ad06a; }
+  .text-status { font-family: 'Silkscreen', monospace; font-size: 9px; color: #8a7a60; }
+  .text-status.ok { color: #8ad06a; }
+  .text-status.err { color: #ff6040; }
+
+  /* =================== FIRST-RUN TOUR =================== */
+  .tour-bg {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 90;
+    display: none;
+    align-items: center; justify-content: center;
+    pointer-events: auto;
+  }
+  .tour-bg.show { display: flex; }
+  .tour-card {
+    background: #1a0a05;
+    border: 2px solid #ffb870;
+    width: 540px; max-width: 92vw;
+    padding: 24px 28px;
+    color: #f2d9a8;
+    border-radius: 8px;
+    box-shadow: 0 0 80px #ff885088;
+    position: relative;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .tour-card .step {
+    color: #8ad06a;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    margin-bottom: 6px;
+  }
+  .tour-card h2 {
+    font-family: 'Silkscreen', monospace;
+    color: #ffb870;
+    font-size: 18px;
+    letter-spacing: 0.16em;
+    margin-bottom: 12px;
+    line-height: 1.25;
+  }
+  .tour-card p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #d4b88a;
+    margin-bottom: 8px;
+  }
+  .tour-card p b { color: #ffde5a; }
+  .tour-card code {
+    background: #0a0400;
+    color: #8ad06a;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 12px;
+  }
+  .tour-card kbd {
+    background: #2a1605;
+    border: 1px solid #5a3a20;
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: #ffde5a;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+  }
+  .tour-card .progress {
+    display: flex; gap: 4px;
+    margin-top: 18px; margin-bottom: 12px;
+  }
+  .tour-card .progress .d {
+    width: 28px; height: 3px;
+    background: #3a2010;
+  }
+  .tour-card .progress .d.on { background: #ffde5a; }
+  .tour-card .ctas {
+    display: flex; gap: 8px; justify-content: space-between;
+  }
+  .tour-card button {
+    padding: 9px 16px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .tour-card .skip {
+    background: transparent; color: #8a7a60;
+    border: 1px solid #3a2010;
+  }
+  .tour-card .skip:hover { color: #f2d9a8; border-color: #5a3a20; }
+  .tour-card .next {
+    background: #ffb870; color: #0a0400;
+    border: 1px solid #ffb870;
+  }
+  .tour-card .next:hover { background: #ffde5a; }
+
   /* =================== SPAWN MODAL =================== */
   .modal-bg {
     position: fixed; inset: 0;
@@ -583,12 +720,13 @@
   </div>
 
   <div class="stats">
-    <div class="stat busy"><span class="k">BUSY</span><b id="s_busy">0</b></div>
-    <div class="stat"><span class="k">IDLE</span><b id="s_idle">0</b></div>
-    <div class="stat error"><span class="k">ERR</span><b id="s_err">0</b></div>
-    <div class="stat"><span class="k">PROJECTS</span><b id="s_proj">0</b></div>
-    <div class="stat"><span class="k">TOKENS</span><b id="s_tok">0</b></div>
-    <div class="stat"><span class="k">COST</span><b id="s_cost">$0</b></div>
+    <div class="stat busy"><span class="k">●</span><b id="s_busy">0</b><span class="kk">busy</span></div>
+    <div class="stat error"><span class="k">⚠</span><b id="s_err">0</b><span class="kk">err</span></div>
+    <div class="stat"><span class="k">$</span><b id="s_cost">0</b><span class="kk">spent</span></div>
+    <span class="stat-sep">·</span>
+    <div class="stat muted" id="moreStats" title="more">
+      <span id="s_idle">0</span> idle · <span id="s_proj">0</span> proj · <span id="s_tok">0</span> tok
+    </div>
   </div>
 
   <div class="nav">
@@ -622,8 +760,8 @@
   </div>
 
   <div class="queen-strip">
-    <div class="q">QUEEN <span id="q_count">(0)</span></div>
-    <span class="hint"><kbd>N</kbd> spawn · <kbd>L</kbd> log · <kbd>A</kbd> toggle archive · <kbd>Esc</kbd> close</span>
+    <div class="q">QUEEN · <span id="q_count">0</span></div>
+    <span class="hint"><kbd>?</kbd> tour · <kbd>N</kbd> spawn · <kbd>L</kbd> log</span>
   </div>
 
   <div class="logpanel" id="logpanel">
@@ -632,6 +770,25 @@
   </div>
 
   <div id="tooltip"></div>
+
+  <!-- FIRST-RUN TOUR -->
+  <div class="tour-bg" id="tourBg">
+    <div class="tour-card" id="tourCard">
+      <div class="step" id="tourStep">STEP 1 / 4</div>
+      <h2 id="tourTitle">welcome to your colony</h2>
+      <div id="tourBody"></div>
+      <div class="progress">
+        <div class="d on"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+      </div>
+      <div class="ctas">
+        <button class="skip" onclick="closeTour()">skip</button>
+        <button class="next" id="tourNext" onclick="nextTour()">NEXT ▸</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Drawer -->
   <div class="drawer" id="drawer">
@@ -649,6 +806,8 @@
         <div class="s"><span class="k">TOKENS OUT</span><span class="v" id="d_tout">0</span></div>
         <div class="s"><span class="k">COST</span><span class="v" id="d_cost">$0.00</span></div>
         <div class="s"><span class="k">EVENTS</span><span class="v" id="d_events">0</span></div>
+        <div class="s"><span class="k">CACHE HIT</span><span class="v" id="d_cache" style="font-size:14px">—</span></div>
+        <div class="s"><span class="k">$ / EVENT</span><span class="v" id="d_cper" style="font-size:14px">—</span></div>
         <div class="s"><span class="k">MODEL</span><span class="v" id="d_model" style="font-size:11px">—</span></div>
         <div class="s"><span class="k">STATUS</span><span class="v" id="d_status2" style="font-size:11px">—</span></div>
       </div>
@@ -658,6 +817,18 @@
         <button class="reveal-btn" onclick="revealActive('iterm')">💻 ITERM</button>
         <button class="reveal-btn" onclick="revealActive('terminal')">▢ TERMINAL</button>
       </div>
+
+      <!-- Text-back input: types message into the iTerm/Terminal tab running this session -->
+      <div class="text-back" id="textBack">
+        <div class="lbl">◆ TEXT THE AGENT</div>
+        <div class="hint">types into the iTerm/Terminal tab where this session runs. needs that tab open. enter to send.</div>
+        <textarea id="textBackInput" placeholder="approve the push  ·  also update the readme  ·  stop and explain"></textarea>
+        <div style="display:flex; gap:6px; align-items:center">
+          <button class="reveal-btn" onclick="textActive()">⌁ SEND</button>
+          <span class="text-status" id="textStatus"></span>
+        </div>
+      </div>
+
       <div id="d_events_list"></div>
     </div>
   </div>
@@ -1015,8 +1186,8 @@ function refreshStats() {
   document.getElementById('s_err').textContent  = err;
   document.getElementById('s_proj').textContent = projs;
   document.getElementById('s_tok').textContent  = fmt(tok);
-  document.getElementById('s_cost').textContent = '$' + cost.toFixed(2);
-  document.getElementById('q_count').textContent = `(${busy + idle + err})`;
+  document.getElementById('s_cost').textContent = cost.toFixed(2);
+  document.getElementById('q_count').textContent = `${busy + idle + err} ants`;
   emptyEl.style.display = (busy + idle + err) === 0 ? 'flex' : 'none';
 }
 function fmt(n) {
@@ -1120,6 +1291,29 @@ function refreshDrawer(session) {
   document.getElementById('d_cost').textContent  = '$' + (session.costUsd || 0).toFixed(2);
   document.getElementById('d_events').textContent = session.eventCount || 0;
   document.getElementById('d_model').textContent  = session.model || '—';
+
+  // Cache hit rate: cache_read / (cache_read + tokens_in_uncached)
+  // tokensIn already excludes cached portion (Anthropic counts billable input separately).
+  // So total prompt = cacheRead + cacheCreate + tokensIn. hit = cacheRead / total.
+  const cR = session.cacheRead || 0;
+  const cC = session.cacheCreate || 0;
+  const tI = session.tokensIn || 0;
+  const total = cR + cC + tI;
+  const cacheEl = document.getElementById('d_cache');
+  if (total > 0) {
+    const pct = (cR / total) * 100;
+    cacheEl.textContent = pct.toFixed(0) + '%';
+    cacheEl.style.color = pct >= 70 ? '#8ad06a' : pct >= 40 ? '#ffde5a' : '#ff8f3a';
+  } else cacheEl.textContent = '—';
+
+  // $ per event
+  const cper = document.getElementById('d_cper');
+  if ((session.eventCount || 0) > 0 && session.costUsd) {
+    const v = session.costUsd / session.eventCount;
+    cper.textContent = '$' + v.toFixed(4);
+    cper.style.color = v > 0.05 ? '#ff8f3a' : v > 0.02 ? '#ffde5a' : '#8ad06a';
+  } else cper.textContent = '—';
+
   const st = document.getElementById('d_state');
   st.textContent = '◉ ' + session.status.toUpperCase();
   st.className = 'state ' + session.status;
@@ -1127,6 +1321,44 @@ function refreshDrawer(session) {
 }
 function closeDrawer() { drawer.classList.remove('open'); openSessionId = null; }
 window.closeDrawer = closeDrawer;
+
+async function textActive() {
+  if (!openSessionId) return;
+  const ta = document.getElementById('textBackInput');
+  const status = document.getElementById('textStatus');
+  const msg = ta.value.trim();
+  if (!msg) { status.textContent = '(empty)'; status.className = 'text-status err'; return; }
+  status.textContent = 'sending…';
+  status.className = 'text-status';
+  try {
+    const r = await fetch('/api/text', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: openSessionId, message: msg }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      status.textContent = '✓ sent to ' + (d.app || 'terminal');
+      status.className = 'text-status ok';
+      ta.value = '';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    } else {
+      status.textContent = '✗ ' + (d.reason || 'failed');
+      status.className = 'text-status err';
+    }
+  } catch (err) {
+    status.textContent = '✗ ' + err;
+    status.className = 'text-status err';
+  }
+}
+window.textActive = textActive;
+// Enter to send (Shift+Enter newline)
+document.addEventListener('keydown', (e) => {
+  if (e.target.id === 'textBackInput' && e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    textActive();
+  }
+});
 
 async function revealActive(target) {
   if (!openSessionId) return;
@@ -1263,6 +1495,77 @@ window.addEventListener('resize', () => {
   relayoutProjects();
 });
 setInterval(refreshStats, 2000);
+
+// ============================================================================
+// FIRST-RUN TOUR
+// ============================================================================
+const TOUR_KEY = 'colony.tour.seen.v1';
+const tourSteps = [
+  {
+    title: 'welcome to your colony',
+    body: `<p>Each <b>ant</b> is one Claude Code session you've started. Each <b>tunnel</b> is a project directory.</p>
+           <p>Colony tails <code>~/.claude/projects/</code> and visualizes what's happening — no SDK, no API key.</p>
+           <p style="color:#8a7a60">It only watches sessions you started. Open another terminal and run <code>claude</code> — an ant will crawl in.</p>`
+  },
+  {
+    title: 'how you read it',
+    body: `<p>🐜 <b>Walking ant</b> = session is busy.<br>
+              🟠 <b>Pulsing orange ring</b> = agent is waiting on you.<br>
+              🔴 <b>Red shake</b> = error.<br>
+              💤 <b>Faded</b> = idle.</p>
+           <p>Tunnel <b>foliage grows</b> with project activity. Chambers <b>pulse green/red</b> on tool calls.</p>`
+  },
+  {
+    title: 'click an ant',
+    body: `<p>Drawer slides in with that session's tokens, cost, model, and live event stream.</p>
+           <p>Four buttons reveal the project in <b>Finder / VSCode / iTerm / Terminal</b>.</p>
+           <p>The <b style="color:#8ad06a">TEXT THE AGENT</b> box types your reply into the iTerm tab where that session is running — same as you typing.</p>`
+  },
+  {
+    title: 'commands',
+    body: `<p><kbd>N</kbd> spawn a new ant (queen commands)</p>
+           <p><kbd>L</kbd> toggle live log · <kbd>A</kbd> show all sessions (not just last 2h)</p>
+           <p><kbd>?</kbd> reopen this tour · <kbd>Esc</kbd> close drawer/modal</p>
+           <p style="color:#8a7a60;margin-top:14px">Colony fires a <b>macOS notification</b> when a session goes waiting. You can close this tab; it'll still ping you.</p>`
+  },
+];
+let tourIdx = 0;
+
+function openTour(forced) {
+  if (!forced && localStorage.getItem(TOUR_KEY) === '1') return;
+  tourIdx = 0;
+  renderTour();
+  document.getElementById('tourBg').classList.add('show');
+}
+function renderTour() {
+  const s = tourSteps[tourIdx];
+  document.getElementById('tourStep').textContent = `STEP ${tourIdx + 1} / ${tourSteps.length}`;
+  document.getElementById('tourTitle').textContent = s.title;
+  document.getElementById('tourBody').innerHTML = s.body;
+  const dots = document.querySelectorAll('#tourCard .progress .d');
+  dots.forEach((d, i) => d.classList.toggle('on', i <= tourIdx));
+  document.getElementById('tourNext').textContent = tourIdx === tourSteps.length - 1 ? 'GET STARTED' : 'NEXT ▸';
+}
+function nextTour() {
+  if (tourIdx < tourSteps.length - 1) { tourIdx++; renderTour(); }
+  else closeTour();
+}
+function closeTour() {
+  localStorage.setItem(TOUR_KEY, '1');
+  document.getElementById('tourBg').classList.remove('show');
+}
+window.openTour = openTour;
+window.nextTour = nextTour;
+window.closeTour = closeTour;
+
+// Auto-open tour on first ever visit.
+setTimeout(() => openTour(false), 400);
+
+// ? reopens tour anytime
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input,textarea,select')) return;
+  if (e.key === '?') openTour(true);
+});
 
 // ============================================================================
 // SPAWN MODAL

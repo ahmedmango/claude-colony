@@ -12,6 +12,7 @@ import {
   ensureSession,
   ingestEvent,
   listSessions,
+  getSession,
   onSession,
   onEvent,
   onConflict,
@@ -22,6 +23,7 @@ import { listProjects } from './projects.ts';
 import { ADAPTERS, describeAll, type Provider } from './llm/index.ts';
 import { notifyWaiting, clearNotificationDedupe, notifyCostCrossed } from './notify.ts';
 import { reveal, type RevealTarget } from './reveal.ts';
+import { textSession } from './text.ts';
 
 const PORT = Number(process.env.COLONY_PORT ?? 3174);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,6 +65,17 @@ app.get('/api/projects', (c) =>
 app.get('/api/providers', async (c) =>
   c.json({ providers: await describeAll() }),
 );
+
+app.post('/api/text', async (c) => {
+  const body = await c.req.json().catch(() => null) as { sessionId?: string; message?: string } | null;
+  if (!body || !body.sessionId || !body.message) {
+    return c.json({ error: 'sessionId + message required' }, 400);
+  }
+  const session = getSession(body.sessionId);
+  if (!session) return c.json({ error: 'unknown session' }, 404);
+  const r = await textSession(session, body.message);
+  return c.json(r, r.ok ? 200 : 400);
+});
 
 app.post('/api/reveal', async (c) => {
   const body = await c.req.json().catch(() => null) as { path?: string; target?: string } | null;
@@ -187,6 +200,8 @@ onSession(({ session, prev, reason }) => {
       lastToolName: session.lastToolName,
       tokensIn: session.tokensIn,
       tokensOut: session.tokensOut,
+      cacheRead: session.cacheRead,
+      cacheCreate: session.cacheCreate,
       costUsd: Math.round(session.costUsd * 1000) / 1000,
       eventCount: session.eventCount,
       model: session.model,
@@ -310,6 +325,8 @@ Bun.serve({
             lastToolName: s.lastToolName,
             tokensIn: s.tokensIn,
             tokensOut: s.tokensOut,
+            cacheRead: s.cacheRead,
+            cacheCreate: s.cacheCreate,
             costUsd: Math.round(s.costUsd * 1000) / 1000,
             eventCount: s.eventCount,
             model: s.model,
