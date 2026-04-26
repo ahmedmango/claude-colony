@@ -264,6 +264,10 @@ No build step. Bun runs `.ts` natively.
 
 ---
 
+## Sibling
+
+- **[vibecosting](https://github.com/ahmedmango/vibecosting)** — same data source, opposite philosophy. The focused CLI that fell out of building this. `bunx vibecosting --plan max-5x` and you get a clean spend dashboard in <100ms. No daemon, no browser. Use claude-colony if you want the visualization; vibecosting if you just want the number.
+
 ## Credits
 
 - [Claude Code](https://www.anthropic.com/claude-code) writes the transcripts that make this possible.
